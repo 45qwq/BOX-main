@@ -1,0 +1,222 @@
+package com.fongmi.android.tv.ui.base;
+
+import android.Manifest;
+import android.app.Activity;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.provider.Settings;
+import android.view.DisplayCutout;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
+
+import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.viewbinding.ViewBinding;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.Setting;
+import com.fongmi.android.tv.event.RefreshEvent;
+import com.fongmi.android.tv.utils.FileUtil;
+import com.fongmi.android.tv.utils.ResUtil;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+
+import java.io.File;
+
+public abstract class BaseActivity extends AppCompatActivity {
+
+    protected abstract ViewBinding getBinding();
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+        super.onCreate(savedInstanceState);
+        if (transparent()) setTransparent(this);
+        setContentView(getBinding().getRoot());
+        EventBus.getDefault().register(this);
+        initView(savedInstanceState);
+        setBackCallback();
+        initEvent();
+        requestNotificationPermission();
+    }
+
+    @Override
+    public void setContentView(View view) {
+        super.setContentView(view);
+        refreshWall();
+    }
+
+    protected Activity getActivity() {
+        return this;
+    }
+
+    protected boolean transparent() {
+        return true;
+    }
+
+    protected boolean customWall() {
+        return true;
+    }
+
+    protected boolean handleBack() {
+        return false;
+    }
+
+    protected void initView(Bundle savedInstanceState) {
+    }
+
+    protected void initEvent() {
+    }
+
+    protected void onBackPress() {
+    }
+
+    protected boolean isVisible(View view) {
+        return view.getVisibility() == View.VISIBLE;
+    }
+
+    protected boolean isGone(View view) {
+        return view.getVisibility() == View.GONE;
+    }
+
+    protected void setPadding(ViewGroup layout) {
+        setPadding(layout, false);
+    }
+
+    protected void setPadding(ViewGroup layout, boolean leftOnly) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
+        DisplayCutout cutout = ResUtil.getDisplay(this).getCutout();
+        if (cutout == null) return;
+        int top = cutout.getSafeInsetTop();
+        int left = cutout.getSafeInsetLeft();
+        int right = cutout.getSafeInsetRight();
+        int bottom = cutout.getSafeInsetBottom();
+        int padding = left | right | top | bottom;
+        layout.setPadding(padding, 0, leftOnly ? 0 : padding, 0);
+    }
+
+    protected void noPadding(ViewGroup layout) {
+        layout.setPadding(0, 0, 0, 0);
+    }
+
+    private void setBackCallback() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(handleBack()) {
+            @Override
+            public void handleOnBackPressed() {
+                onBackPress();
+            }
+        });
+    }
+
+    private void setTransparent(Activity activity) {
+        activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        activity.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        activity.getWindow().setStatusBarColor(Color.TRANSPARENT);
+    }
+
+    private void refreshWall() {
+        try {
+            if (!customWall()) return;
+            int wallIndex = Setting.getWall();
+            int screenWidth = ResUtil.getScreenWidth();
+            int screenHeight = ResUtil.getScreenHeight();
+            // 使用 Glide 动态裁剪到屏幕尺寸
+            Glide.with(App.get())
+                    .asBitmap()
+                    .load(wallIndex == 0 ? FileUtil.getWall(0) : ResUtil.getDrawable("wallpaper_" + wallIndex))
+                    .override(screenWidth, screenHeight)
+                    .transform(new com.bumptech.glide.load.resource.bitmap.CenterCrop())
+                    .skipMemoryCache(true)
+                    .diskCacheStrategy(DiskCacheStrategy.NONE)
+                    .into(new com.bumptech.glide.request.target.CustomTarget<android.graphics.Bitmap>() {
+                        @Override
+                        public void onResourceReady(@NonNull android.graphics.Bitmap resource, @Nullable com.bumptech.glide.request.transition.Transition<? super android.graphics.Bitmap> transition) {
+                            // 使用 BitmapDrawable 并设置重力为填充
+                            android.graphics.drawable.BitmapDrawable drawable = new android.graphics.drawable.BitmapDrawable(getResources(), resource);
+                            drawable.setGravity(android.view.Gravity.FILL);
+                            getWindow().setBackgroundDrawable(drawable);
+                        }
+
+                        @Override
+                        public void onLoadCleared(@Nullable Drawable placeholder) {
+                        }
+
+                        @Override
+                        public void onLoadFailed(@Nullable Drawable errorDrawable) {
+                            super.onLoadFailed(errorDrawable);
+                            getWindow().setBackgroundDrawableResource(R.drawable.wallpaper_6);
+                        }
+                    });
+        } catch (Exception e) {
+            getWindow().setBackgroundDrawableResource(R.drawable.wallpaper_6);
+        }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onRefreshEvent(RefreshEvent event) {
+        if (event.getType() == RefreshEvent.Type.WALL) refreshWall();
+    }
+
+    private static final int REQUEST_NOTIFICATION_PERMISSION = 1001;
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < 33) return;
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return;
+        // 首次请求 or 拒绝后再次请求
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.POST_NOTIFICATIONS)) {
+            // 用户之前拒绝过，但仍可再次请求
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
+        } else {
+            // 首次请求（或永久拒绝后不再弹框，此处仅首次尝试）
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 权限已授予
+            } else {
+                // 用户拒绝了权限，检查是否永久拒绝
+                if (Build.VERSION.SDK_INT >= 33 && !ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.POST_NOTIFICATIONS)) {
+                    // 永久拒绝，引导用户去设置
+                    new androidx.appcompat.app.AlertDialog.Builder(this)
+                            .setTitle("需要通知权限")
+                            .setMessage("应用需要通知权限来显示下载完成等通知，请在设置中开启通知权限")
+                            .setNegativeButton("取消", null)
+                            .setPositiveButton("去设置", (dialog, which) -> {
+                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                intent.setData(Uri.parse("package:" + getPackageName()));
+                                startActivity(intent);
+                            })
+                            .show();
+                }
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        EventBus.getDefault().unregister(this);
+    }
+}

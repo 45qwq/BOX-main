@@ -1,0 +1,108 @@
+<resources xmlns:tools="http://schemas.android.com/tools" xmlns:xliff="http://schemas.android.com/apk/res-auto" tools:ignore="MissingTranslation">
+
+    <!-- App -->
+    <string name="app_keep">Keep</string>
+    <string name="app_history">History</string>
+
+    <!-- Nav -->
+    <string name="nav_home">Home</string>
+    <string name="nav_keep">Favorite</string>
+    <string name="nav_vod">Video</string>
+    <string name="nav_live">Live</string>
+    <string name="nav_setting">Setting</string>
+
+    <!-- Vod -->
+    <string name="vod_home">Home</string>
+
+    <!-- Detail -->
+    <string name="detail_flag">Flag</string>
+    <string name="detail_more">More</string>
+    <string name="detail_episode">Episode</string>
+    <string name="detail_quality">Quality</string>
+    <string name="detail_content">Summary</string>
+    <string name="detail_search">Searching <xliff:g name="name">%s</xliff:g></string>
+
+    <!-- Device -->
+    <string name="device_select">Select devices</string>
+    <string name="device_offline">Device is offline</string>
+    <string name="device_scan">Please scan QR Code to bind</string>
+
+    <!-- Control -->
+    <string name="control_speed">Speed</string>
+    <string name="control_scale">Scale</string>
+    <string name="control_track">Track</string>
+    <string name="control_other">Other</string>
+
+    <!-- Dialog -->
+    <string name="dialog_delete_record">Delete all records?</string>
+    <string name="dialog_delete_keep">All keep records will be removed.</string>
+    <string name="dialog_delete_history">All history records will be removed.</string>
+
+    <!-- Timer -->
+    <string name="timer_5">5 minutes</string>
+    <string name="timer_15">15 minutes</string>
+    <string name="timer_30">30 minutes</string>
+    <string name="timer_60">1 hour</string>
+    <string name="timer_120">2 hours</string>
+    <string name="timer_180">3 hours</string>
+    <string name="timer_delay">Add 15 minutes</string>
+    <string name="timer_cancel">Cancel timer</string>
+
+    <!-- Home -->
+    <string name="home_history">History</string>
+    <string name="home_more">More</string>
+
+    <!-- Hint -->
+    <string name="shortcut">Shortcut has been added.</string>
+
+    <string-array name="select_background">
+        <item>Off</item>
+        <item>On</item>
+        <item>PiP</item>
+    </string-array>
+
+    <!-- Download -->
+    <string name="download">Download</string>
+    <string name="download_management">Download Management</string>
+    <string name="download_blocked">Download blocked: local address not supported</string>
+    <string name="download_start">Download started</string>
+    <string name="download_merging">Merging video…</string>
+    <string name="download_speed">%1$s/s</string>
+    <string name="download_completed">Completed</string>
+    <string name="download_failed">Failed</string>
+    <string name="downloading">Downloading…</string>
+    <string name="download_empty">No downloads</string>
+    <string name="download_segment">Segment %1$d/%2$d</string>
+    <string name="dialog_delete_download">Delete all download records?</string>
+    <string name="error_permission_storage">需要存储权限</string>
+    <string name="download_permission_title">存储权限申请</string>
+    <string name="download_permission_msg">下载管理需要访问存储权限以扫描和管理下载文件</string>
+    <string name="download_permission_settings">前往设置</string>
+    <string name="download_permission_granted">权限已授予</string>
+    <string name="download_permission_denied">权限被拒绝，部分功能可能无法使用</string>
+    <string name="download_select_episode">选择下载剧集</string>
+    <string name="download_select_all">全选</string>
+    <string name="download_deselect_all">取消全选</string>
+    <string name="download_invert_select">反选</string>
+    <string name="download_selected">下载选中</string>
+    <string name="download_selected_with_count">下载选中(%1$d)</string>
+    <string name="download_concurrent_limit">同时下载数量</string>
+    <string name="download_max_concurrent">最大同时下载数</string>
+    <string name="setting_download_path">下载路径</string>
+    <string name="setting_download_mgr">下载管理</string>
+    <string name="download_path_select">选择下载路径</string>
+
+    <!-- 下载管理 -->
+    <string name="download_manager">下载管理</string>
+    <string name="download_path">下载路径</string>
+    <string name="select_download_path">选择下载保存路径</string>
+    <string name="download_path_hint">默认: Download/mxbox/movie</string>
+    <string name="play_video">播放视频</string>
+    <string name="delete_download">删除下载</string>
+    <string name="cancel_download_task">取消下载</string>
+    <string name="confirm_delete_record">确定删除下载记录？</string>
+    <string name="confirm_delete_record_and_file">确定删除下载记录和视频文件？</string>
+    <string name="confirm_cancel_download">确定取消当前下载？</string>
+    <string name="task_in_progress_delete_confirm">该任务正在下载中，确定要删除吗？</string>
+
+</resources>
