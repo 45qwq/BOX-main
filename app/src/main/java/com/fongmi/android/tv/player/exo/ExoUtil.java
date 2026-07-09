@@ -38,12 +38,51 @@ import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.NextRenderersFactory;
 
 public class ExoUtil {
 
+    // 点播缓冲策略（标准模式）
+    public static final int VOD_MIN_BUFFER_MS = 20000;
+    public static final int VOD_MAX_BUFFER_MS = 80000;
+    public static final int VOD_BUFFER_FOR_PLAYBACK_MS = 1500;
+    public static final int VOD_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 8000;
+
+    // 4K/高码率缓冲策略（大缓冲模式）
+    public static final int UHD_MIN_BUFFER_MS = 30000;
+    public static final int UHD_MAX_BUFFER_MS = 120000;
+    public static final int UHD_BUFFER_FOR_PLAYBACK_MS = 5000;
+    public static final int UHD_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 10000;
+
+    // 直播缓冲策略（低延迟模式）
+    public static final int LIVE_MIN_BUFFER_MS = 1000;
+    public static final int LIVE_MAX_BUFFER_MS = 5000;
+    public static final int LIVE_BUFFER_FOR_PLAYBACK_MS = 500;
+    public static final int LIVE_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 1000;
+
     public static String getUa() {
         return Util.getUserAgent(App.get(), BuildConfig.APPLICATION_ID);
     }
 
     public static LoadControl buildLoadControl() {
-        return new DefaultLoadControl.Builder().setBufferDurationsMs(DefaultLoadControl.DEFAULT_MIN_BUFFER_MS * Setting.getBuffer(), DefaultLoadControl.DEFAULT_MAX_BUFFER_MS * Setting.getBuffer(), DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS, DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS).build();
+        int buffer = Math.min(Setting.getBuffer(), 10);
+        int playbackBuffer = Math.min(Setting.getBuffer(), 3);
+        // buffer >= 7 时使用 4K 大缓冲策略，避免高码率视频网络抖动卡顿
+        int minBuffer = buffer >= 7 ? UHD_MIN_BUFFER_MS : VOD_MIN_BUFFER_MS;
+        int maxBuffer = buffer >= 7 ? UHD_MAX_BUFFER_MS : VOD_MAX_BUFFER_MS;
+        return new DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                        minBuffer * Math.max(1, buffer / 3),
+                        maxBuffer * Math.max(1, buffer / 3),
+                        VOD_BUFFER_FOR_PLAYBACK_MS * playbackBuffer,
+                        VOD_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS * playbackBuffer
+                ).build();
+    }
+
+    public static LoadControl buildLiveLoadControl() {
+        return new DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                        LIVE_MIN_BUFFER_MS,
+                        LIVE_MAX_BUFFER_MS,
+                        LIVE_BUFFER_FOR_PLAYBACK_MS,
+                        LIVE_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+                ).build();
     }
 
     public static TrackSelector buildTrackSelector() {

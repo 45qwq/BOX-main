@@ -36,5 +36,6 @@
     <color name="dialog_bg">#F01E1E1E</color>
     <color name="primary_button">#FF1976D2</color>
     <color name="episode_text">#FFFFFF</color>
+    <color name="grey_500">#9E9E9E</color>
 
 </resources>

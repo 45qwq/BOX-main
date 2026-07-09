@@ -7,16 +7,16 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
+import com.github.catvod.utils.Logger
 import androidx.core.app.NotificationCompat
 import androidx.work.*
 import com.fongmi.android.tv.App
 import com.fongmi.android.tv.R
 import com.fongmi.android.tv.bean.Download
 import com.fongmi.android.tv.event.RefreshEvent
+import com.fongmi.android.tv.utils.HttpDownloader
 import com.fongmi.android.tv.utils.FluxDownDownloader
 import com.fongmi.android.tv.utils.Notify
-import com.fongmi.android.tv.utils.ThunderDownloader
 import com.github.catvod.utils.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -36,7 +36,6 @@ class DownloadWorker(
 ) : CoroutineWorker(context, params) {
 
     companion object {
-        private const val TAG = "DownloadWorker"
         private const val KEY_DOWNLOAD_JSON = "download_json"
         private const val NOTIFICATION_ID = 1002
         private const val CHANNEL_ID = "download_worker_channel"
@@ -62,14 +61,14 @@ class DownloadWorker(
                     ExistingWorkPolicy.REPLACE,
                     request
                 )
-            Log.i(TAG, "WorkManager 入队: ${download.vodName}")
+            Logger.i("DownloadWorker: WorkManager 入队: ${download.vodName}")
         }
 
         /** 取消下载任务 */
         @JvmStatic
         fun cancel(context: Context, downloadId: String) {
             WorkManager.getInstance(context).cancelUniqueWork(WORK_PREFIX + downloadId)
-            Log.i(TAG, "WorkManager 取消: $downloadId")
+            Logger.i("DownloadWorker: WorkManager 取消: $downloadId")
         }
 
         /** 取消所有下载任务 */
@@ -87,11 +86,11 @@ class DownloadWorker(
         val downloadJson = inputData.getString(KEY_DOWNLOAD_JSON)
             ?: return Result.failure()
         val download = Download.objectFrom(downloadJson)
-        if (download.id == null || download.id.isEmpty()) {
+        if (download.id.isEmpty()) {
             return Result.failure()
         }
 
-        Log.i(TAG, "Worker 开始下载: ${download.vodName}")
+        Logger.i("DownloadWorker: Worker 开始下载: ${download.vodName}")
 
         // 创建通知渠道并设置前台通知
         createNotificationChannel()
@@ -130,7 +129,7 @@ class DownloadWorker(
                         "completed" -> Result.success()
                         else -> {
                             if (runAttemptCount < MAX_RETRIES) {
-                                Log.i(TAG, "Worker 重试: ${runAttemptCount + 1}/$MAX_RETRIES")
+                                Logger.i("DownloadWorker: Worker 重试: ${runAttemptCount + 1}/$MAX_RETRIES")
                                 Result.retry()
                             } else {
                                 Result.failure()
@@ -140,7 +139,7 @@ class DownloadWorker(
                 }
             } catch (e: Exception) {
                 if (!isStopped) {
-                    Log.e(TAG, "下载异常", e)
+                    Logger.e("DownloadWorker: 下载异常", e)
                     updateDownloadStatus(download, "failed")
                     Notify.show("下载失败: ${e.message ?: "未知错误"}")
                 }
@@ -198,7 +197,7 @@ class DownloadWorker(
                 }
 
                 override fun onSuccess(file: File) {
-                    if (file == null || !file.exists() || file.length() == 0L) {
+                    if (!file.exists() || file.length() == 0L) {
                         updateDownloadStatus(download, "failed")
                         Notify.show("下载失败: 合并后的文件不存在或为空")
                         latch.countDown()
@@ -220,7 +219,7 @@ class DownloadWorker(
                 }
 
                 override fun onError(error: String) {
-                    Log.e(TAG, "M3U8 下载失败: $error")
+                    Logger.e("DownloadWorker: M3U8 下载失败: $error")
                     updateDownloadStatus(download, "failed")
                     Notify.show("下载失败: $error")
                     latch.countDown()
@@ -235,13 +234,13 @@ class DownloadWorker(
         val headers = parseHeaders(download.header)
         var lastGoodSpeed = 0L
 
-        val thunder = ThunderDownloader()
-        thunder.download(
+        val http = HttpDownloader()
+        http.download(
             download.url ?: "",
             outputFile.parentFile ?: Path.download(),
             outputFile.name,
             headers,
-            object : ThunderDownloader.Callback {
+            object : HttpDownloader.Callback {
                 override fun onStart(totalSize: Long) {
                     updateDownloadStatus(download, "downloading")
                 }
@@ -274,7 +273,7 @@ class DownloadWorker(
                     RefreshEvent.download()
                 }
 
-                override fun onSuccess(file: File) {
+                override fun onSuccess(file: File?) {
                     if (file == null || !file.exists() || file.length() == 0L) {
                         updateDownloadStatus(download, "failed")
                         Notify.show("下载失败: 文件不存在或为空")
@@ -296,8 +295,8 @@ class DownloadWorker(
                     latch.countDown()
                 }
 
-                override fun onError(error: String) {
-                    Log.e(TAG, "直链下载失败: $error")
+                override fun onError(error: String?) {
+                    Logger.e("DownloadWorker: 直链下载失败: $error")
                     updateDownloadStatus(download, "failed")
                     Notify.show("下载失败: $error")
                     latch.countDown()
@@ -407,13 +406,12 @@ class DownloadWorker(
             val contentType = response.header("Content-Type")
             val code = response.code
             response.close()
-            Log.i(TAG, "HEAD检测: url=$url HTTP=$code Content-Type=$contentType")
+            Logger.i("DownloadWorker: HEAD检测: url=$url HTTP=$code Content-Type=$contentType")
             if (contentType != null) {
                 val lower = contentType.lowercase()
                 lower.contains("mpegurl") || lower.contains("m3u8") || lower.contains("vnd.apple")
             } else false
         } catch (e: Exception) {
-            Log.d(TAG, "HEAD检测失败: ${e.message}")
             false
         }
     }

@@ -1,7 +1,6 @@
 package com.fongmi.android.tv.bean;
 
 import androidx.annotation.NonNull;
-import androidx.lifecycle.LiveData;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
@@ -115,10 +114,6 @@ public class Keep {
         return AppDatabase.get().getKeepDao().find(cid, key);
     }
 
-    public static boolean exist(String key) {
-        return AppDatabase.get().getKeepDao().find(key) != null;
-    }
-
     public static void deleteAll() {
         AppDatabase.get().getKeepDao().delete();
     }
@@ -127,24 +122,8 @@ public class Keep {
         AppDatabase.get().getKeepDao().delete(cid);
     }
 
-    public static void delete(String key) {
-        AppDatabase.get().getKeepDao().delete(key);
-    }
-
     public static List<Keep> getVod() {
         return AppDatabase.get().getKeepDao().getVod();
-    }
-
-    public static LiveData<List<Keep>> getVodLive() {
-        return AppDatabase.get().getKeepDao().getVodLive();
-    }
-
-    public static List<Keep> getLive() {
-        return AppDatabase.get().getKeepDao().getLive();
-    }
-
-    public static LiveData<List<Keep>> getLiveLive() {
-        return AppDatabase.get().getKeepDao().getLiveLive();
     }
 
     public void save(int cid) {

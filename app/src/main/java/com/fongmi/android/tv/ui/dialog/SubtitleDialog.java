@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.ui.dialog;
 
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -56,7 +57,13 @@ public final class SubtitleDialog extends BaseDialog {
     @Override
     protected void initView() {
         int count = binding.getRoot().getChildCount();
-        if (full) for (int i = 0; i < count; i++) ((ImageView) binding.getRoot().getChildAt(i)).getDrawable().setTint(MDColor.WHITE);
+        if (full) for (int i = 0; i < count; i++) {
+            View child = binding.getRoot().getChildAt(i);
+            if (child instanceof ImageView) {
+                Drawable drawable = ((ImageView) child).getDrawable();
+                if (drawable != null) drawable.setTint(MDColor.WHITE);
+            }
+        }
     }
 
     @Override

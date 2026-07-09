@@ -53,6 +53,8 @@ public class Download {
 
     @SerializedName("segmentInfo")
     private String segmentInfo;
+    @SerializedName("errorMsg")
+    private String errorMsg;
 
     public static Download objectFrom(String str) {
         try {
@@ -202,6 +204,14 @@ public class Download {
 
     public void setSegmentInfo(String segmentInfo) {
         this.segmentInfo = segmentInfo;
+    }
+
+    public String getErrorMsg() {
+        return errorMsg == null ? "" : errorMsg;
+    }
+
+    public void setErrorMsg(String errorMsg) {
+        this.errorMsg = errorMsg;
     }
 
     public Download save() {

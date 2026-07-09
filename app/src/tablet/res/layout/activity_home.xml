@@ -13,18 +13,4 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <!-- 底部导航栏 -->
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/navigation"
-        android:layout_width="match_parent"
-        android:layout_height="70dp"
-        android:background="@color/transparent"
-        app:elevation="0dp"
-        app:itemIconSize="24dp"
-        app:itemIconTint="@color/nav"
-        app:itemTextColor="@color/nav"
-        app:labelVisibilityMode="unlabeled"
-        app:itemActiveIndicatorStyle="@style/Indicator"
-        app:menu="@menu/menu_nav" />
-
 </LinearLayout>

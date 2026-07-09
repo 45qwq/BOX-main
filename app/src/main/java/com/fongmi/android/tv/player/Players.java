@@ -21,11 +21,13 @@ import android.text.TextUtils;
 import androidx.annotation.NonNull;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
+import androidx.media3.common.Effect;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.Tracks;
 import androidx.media3.common.VideoSize;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.SeekParameters;
 import androidx.media3.exoplayer.drm.FrameworkMediaDrm;
 import androidx.media3.exoplayer.util.EventLogger;
 import androidx.media3.ui.PlayerView;
@@ -34,7 +36,6 @@ import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Constant;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.Setting;
-import com.fongmi.android.tv.bean.Channel;
 import com.fongmi.android.tv.bean.Danmaku;
 import com.fongmi.android.tv.bean.Drm;
 import com.fongmi.android.tv.bean.Result;
@@ -46,6 +47,7 @@ import com.fongmi.android.tv.event.PlayerEvent;
 import com.fongmi.android.tv.impl.ParseCallback;
 import com.fongmi.android.tv.impl.SessionCallback;
 import com.fongmi.android.tv.player.danmaku.DanPlayer;
+import com.fongmi.android.tv.player.effect.Anime4KEffect;
 import com.fongmi.android.tv.player.exo.ExoUtil;
 import com.fongmi.android.tv.utils.FileUtil;
 import com.fongmi.android.tv.utils.Notify;
@@ -62,6 +64,7 @@ import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import com.fongmi.android.tv.utils.ThreadPools;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -74,7 +77,6 @@ public class Players implements Player.Listener, ParseCallback {
     public static final int SOFT = 0;
     public static final int HARD = 1;
     public static final int AUTO = 2;
-    public static final int MPV = 3;
 
     private final StringBuilder builder;
     private final Formatter formatter;
@@ -98,6 +100,7 @@ public class Players implements Player.Listener, ParseCallback {
 
     private int decode;
     private int retry;
+    private boolean anime4KApplied;
 
     public static Players create(Activity activity) {
         Players player = new Players(activity);
@@ -127,26 +130,17 @@ public class Players implements Player.Listener, ParseCallback {
     }
 
     private void setPlayer(PlayerView view) {
-        int playerEngine = Setting.getPlayerEngine();
-
-        // 根据播放器引擎选择不同的播放器
-        if (playerEngine == Players.MPV) {
-            // MPV播放器 - 暂时使用ExoPlayer作为后备，等集成MPV后替换
-            initExoPlayer(view, decode);
-        } else {
-            // ExoPlayer播放器 (软解/硬解/自动)
-            initExoPlayer(view, decode);
-        }
+        initExoPlayer(view, decode);
     }
 
     private void initExoPlayer(PlayerView view, int decodeMode) {
         int renderMode;
         if (decodeMode == HARD) {
-            renderMode = EXTENSION_RENDERER_MODE_ON; // 强制硬解
+            renderMode = EXTENSION_RENDERER_MODE_ON; // 优先硬解，失败回退软解
         } else if (decodeMode == SOFT) {
-            renderMode = EXTENSION_RENDERER_MODE_PREFER; // 强制软解
+            renderMode = EXTENSION_RENDERER_MODE_PREFER; // 优先软解，失败回退硬解
         } else {
-            renderMode = androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF; // 自动选择
+            renderMode = EXTENSION_RENDERER_MODE_ON; // 自动：优先硬解，失败自动回退软解
         }
 
         exoPlayer = new ExoPlayer.Builder(App.get())
@@ -156,6 +150,12 @@ public class Players implements Player.Listener, ParseCallback {
             .setMediaSourceFactory(ExoUtil.buildMediaSourceFactory())
             .build();
         exoPlayer.setAudioAttributes(AudioAttributes.DEFAULT, true);
+        exoPlayer.setSeekParameters(SeekParameters.PREVIOUS_SYNC);
+        // Anime4K 超分：初始化时根据已有分辨率信息决定是否应用
+        anime4KApplied = false;
+        if (Setting.isAnime4K() && shouldApplyAnime4K()) {
+            applyAnime4K();
+        }
         exoPlayer.addAnalyticsListener(new EventLogger());
         exoPlayer.setHandleAudioBecomingNoisy(true);
         exoPlayer.setPlayWhenReady(true);
@@ -429,20 +429,6 @@ public class Players implements Player.Listener, ParseCallback {
         App.removeCallbacks(runnable);
     }
 
-    public void start(Channel channel, long timeout) {
-        if (channel.getDrm() != null && !FrameworkMediaDrm.isCryptoSchemeSupported(channel.getDrm().getUUID())) {
-            ErrorEvent.drm(tag);
-        } else if (channel.hasMsg()) {
-            ErrorEvent.extract(tag, channel.getMsg());
-        } else if (channel.getParse() == 1) {
-            startParse(channel.result(), false);
-        } else if (isIllegal(channel.getUrl())) {
-            ErrorEvent.url(tag);
-        } else {
-            setMediaItem(channel, timeout);
-        }
-    }
-
     public void start(Result result, boolean useParse, long timeout) {
         if (result.getDrm() != null && !FrameworkMediaDrm.isCryptoSchemeSupported(result.getDrm().getUUID())) {
             ErrorEvent.drm(tag);
@@ -494,10 +480,6 @@ public class Players implements Player.Listener, ParseCallback {
 
     private void setMediaItem(Map<String, String> headers, String url) {
         setMediaItem(headers, url, format, drm, subs, danmakus, Constant.TIMEOUT_PLAY);
-    }
-
-    private void setMediaItem(Channel channel, long timeout) {
-        setMediaItem(channel.getHeaders(), channel.getUrl(), channel.getFormat(), channel.getDrm(), new ArrayList<>(), new ArrayList<>(), timeout);
     }
 
     private void setMediaItem(Result result, long timeout) {
@@ -673,17 +655,55 @@ public class Players implements Player.Listener, ParseCallback {
     public void onVideoSizeChanged(@NonNull VideoSize videoSize) {
         this.size = videoSize;
         PlayerEvent.size(tag);
+        // 分辨率变化后动态调整超分
+        updateAnime4K();
+    }
+
+    // 超分仅对 < 720p (宽 < 1280) 视频启用
+    private boolean shouldApplyAnime4K() {
+        if (size == null) return false;
+        return size.width > 0 && size.width < 1280;
+    }
+
+    private void applyAnime4K() {
+        if (exoPlayer == null) return;
+        List<Effect> effects = new ArrayList<>();
+        effects.add(new Anime4KEffect(Setting.getAnime4KStrength()));
+        exoPlayer.setVideoEffects(effects);
+        anime4KApplied = true;
+    }
+
+    private void removeAnime4K() {
+        if (exoPlayer == null) return;
+        exoPlayer.setVideoEffects(new ArrayList<>());
+        anime4KApplied = false;
+    }
+
+    // 根据当前分辨率动态应用/移除超分
+    private void updateAnime4K() {
+        if (!Setting.isAnime4K()) {
+            if (anime4KApplied) removeAnime4K();
+            return;
+        }
+        boolean should = shouldApplyAnime4K();
+        if (should && !anime4KApplied) {
+            applyAnime4K();
+        } else if (!should && anime4KApplied) {
+            removeAnime4K();
+        }
     }
 
     @Override
     public void onTracksChanged(@NonNull Tracks tracks) {
         if (tracks.isEmpty()) return;
-        final String key = getKey();
-        App.execute(() -> {
-            List<Track> trackList = Track.find(key);
-            App.post(() -> setTrack(trackList));
+        // 数据库操作必须在后台线程执行，避免主线程阻塞
+        ThreadPools.io().execute(() -> {
+            List<Track> trackList = Track.find(getKey());
+            App.post(() -> {
+                setTrack(trackList);
+                PlayerEvent.track(tag);
+            });
         });
-        PlayerEvent.track(tag);
     }
 
     @Override

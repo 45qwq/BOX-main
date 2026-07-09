@@ -2,6 +2,7 @@ package com.fongmi.android.tv.api.loader;
 import com.github.catvod.utils.Logger;
 
 import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.api.config.VodConfig;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderNull;
 
@@ -42,7 +43,10 @@ public class JsLoader {
     public Object[] proxyInvoke(Map<String, String> params) {
         try {
             if (!params.containsKey("siteKey")) return spiders.get(recent).proxyLocal(params);
-            return BaseLoader.get().getSpider(params).proxyLocal(params);
+            String siteKey = params.get("siteKey");
+            Spider spider = spiders.get(siteKey);
+            if (spider == null) spider = VodConfig.get().getSite(siteKey).spider();
+            return spider.proxyLocal(params);
         } catch (Throwable e) {
             Logger.e("Error", e);
             return null;

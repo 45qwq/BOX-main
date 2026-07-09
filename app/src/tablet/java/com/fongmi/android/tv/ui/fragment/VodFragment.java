@@ -43,9 +43,7 @@ import com.fongmi.android.tv.impl.FilterCallback;
 import com.fongmi.android.tv.impl.SiteCallback;
 import com.fongmi.android.tv.model.SiteViewModel;
 import com.fongmi.android.tv.ui.activity.CollectActivity;
-import com.fongmi.android.tv.ui.activity.HistoryActivity;
-import com.fongmi.android.tv.ui.activity.KeepActivity;
-import com.fongmi.android.tv.ui.activity.DownloadActivity;
+import com.fongmi.android.tv.ui.activity.HomeActivity;
 import com.fongmi.android.tv.ui.activity.VideoActivity;
 import com.fongmi.android.tv.ui.adapter.TypeAdapter;
 import com.fongmi.android.tv.ui.base.BaseFragment;
@@ -61,7 +59,6 @@ import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.github.catvod.net.OkHttp;
 import com.google.common.net.HttpHeaders;
-import com.airbnb.lottie.LottieAnimationView;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -152,12 +149,10 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
         mBinding.top.setOnClickListener(this::onTop);
         mBinding.link.setOnClickListener(this::onLink);
         mBinding.logo.setOnClickListener(this::onLogo);
-        mBinding.keep.setOnClickListener(this::onKeep);
+        mBinding.setting.setOnClickListener(this::onSetting);
         mBinding.retry.setOnClickListener(this::onRetry);
         mBinding.filter.setOnClickListener(this::onFilter);
         mBinding.search.setOnClickListener(this::onSearch);
-        mBinding.download.setOnClickListener(this::onDownload);
-        mBinding.history.setOnClickListener(this::onHistory);
         mBinding.filter.setOnLongClickListener(this::onLink);
         mBinding.pager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
             @Override
@@ -225,14 +220,14 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
     private Result handle(Result result) {
         List<Class> types = new ArrayList<>();
         for (Class type : result.getTypes()) if (result.getFilters().containsKey(type.getTypeId())) type.setFilters(result.getFilters().get(type.getTypeId()));
-        android.util.Log.d("VodFragment_DBG", "handle: siteCategories=" + getSite().getCategories() + " resultTypes=" + (result.getTypes() != null ? result.getTypes().size() : 0));
+
         List<String> categories = getSite().getCategories();
         if (categories.isEmpty()) {
             types.addAll(result.getTypes());
         } else {
             for (String cate : categories) for (Class type : result.getTypes()) if (cate.equals(type.getTypeName())) types.add(type);
         }
-        android.util.Log.d("VodFragment_DBG", "handle: filtered types=" + types.size());
+        
         result.setTypes(types);
         return result;
     }
@@ -285,15 +280,6 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
                 }
                 // 空源状态下隐藏所有悬浮按钮
                 hideFabButtons();
-                // 启动Lottie动画
-                try {
-                    LottieAnimationView lottieView = mBinding.emptySourceHint.findViewById(R.id.lottieAnimation);
-                    if (lottieView != null) {
-                        lottieView.playAnimation();
-                    }
-                } catch (Exception e) {
-                    // 忽略错误
-                }
             }
         }
     }
@@ -306,20 +292,14 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
     // 实现ConfigCallback接口
     @Override
     public void setConfig(Config config) {
-        android.util.Log.d("VodFragment", "setConfig called with: " + (config != null ? config.toString() : "null"));
-        
         if (config == null || config.isEmpty()) {
-            android.util.Log.d("VodFragment", "Config is null or empty, returning");
             return;
         }
         
         // 检查Fragment是否还在活动状态，增强检查
         if (!isValidFragmentState()) {
-            android.util.Log.d("VodFragment", "Fragment state invalid, returning");
             return;
         }
-        
-        android.util.Log.d("VodFragment", "Fragment state valid, proceeding with config load");
         
         // 安全地隐藏空源提示
         try {
@@ -331,19 +311,15 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
         }
         
         Notify.progress(getActivity());
-        android.util.Log.d("VodFragment", "Calling VodConfig.load");
         VodConfig.load(config, new Callback() {
             @Override
             public void success() {
-                android.util.Log.d("VodFragment", "VodConfig.load success callback");
                 // 双重检查Fragment是否还在活动状态
                 if (!isValidFragmentState()) {
-                    android.util.Log.d("VodFragment", "Fragment state invalid in success callback");
                     return;
                 }
                 
                 try {
-                    android.util.Log.d("VodFragment", "Success: dismissing notify and refreshing");
                     Notify.dismiss();
                     RefreshEvent.config();
                     RefreshEvent.video();
@@ -356,10 +332,8 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
             
             @Override
             public void error(String msg) {
-                android.util.Log.e("VodFragment", "VodConfig.load error: " + msg);
                 // 双重检查Fragment是否还在活动状态
                 if (!isValidFragmentState()) {
-                    android.util.Log.d("VodFragment", "Fragment state invalid in error callback");
                     return;
                 }
                 
@@ -457,8 +431,11 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
         SiteDialog.create(this).change().show();
     }
 
-    private void onKeep(View view) {
-        KeepActivity.start(getActivity());
+    private void onSetting(View view) {
+        android.app.Activity activity = getActivity();
+        if (activity instanceof com.fongmi.android.tv.ui.activity.HomeActivity) {
+            ((com.fongmi.android.tv.ui.activity.HomeActivity) activity).change(1);
+        }
     }
 
     private void onRetry(View view) {
@@ -475,14 +452,6 @@ public class VodFragment extends BaseFragment implements SiteCallback, FilterCal
 
     private void onSearch(View view) {
         CollectActivity.start(getActivity(), mBinding.hot.getText().toString());
-    }
-
-    private void onHistory(View view) {
-        HistoryActivity.start(getActivity());
-    }
-
-    private void onDownload(View view) {
-        DownloadActivity.start(getActivity());
     }
 
     private void showProgress() {

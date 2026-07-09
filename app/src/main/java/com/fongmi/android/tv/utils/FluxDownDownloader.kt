@@ -1,6 +1,6 @@
 package com.fongmi.android.tv.utils
 
-import android.util.Log
+import com.github.catvod.utils.Logger
 import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -43,7 +43,6 @@ class FluxDownDownloader(
     }
 
     companion object {
-        private const val TAG = "FluxDownDownloader"
         private const val MAX_CONCURRENT = 2       // 每任务2个线程
         private const val CONNECT_TIMEOUT = 30L     // 秒
         private const val READ_TIMEOUT = 60L        // 秒
@@ -109,7 +108,7 @@ class FluxDownDownloader(
                 callback.onError("播放列表中没有 TS 片段")
                 return
             }
-            Log.i(TAG, "共 $totalSegments 个 TS 片段")
+            Logger.i("FluxDownDownloader: 共 $totalSegments 个 TS 片段")
 
             // 3. 获取 AES-128 密钥
             var aesKey: ByteArray? = null
@@ -119,7 +118,7 @@ class FluxDownDownloader(
                     callback.onError("无法获取 AES-128 密钥: ${playlist.keyInfo.uri}")
                     return
                 }
-                Log.i(TAG, "AES-128 密钥获取成功 (${aesKey.size} bytes)")
+                Logger.i("FluxDownDownloader: AES-128 密钥获取成功 (${aesKey.size} bytes)")
             }
             if (cancelled) return
 
@@ -134,7 +133,7 @@ class FluxDownDownloader(
                     callback.onError("下载失败: ${failedCount.get()}/$totalSegments 片段失败")
                     return
                 }
-                Log.w(TAG, "${failedCount.get()} 个片段下载失败（<= 20%），继续合并")
+                Logger.w("FluxDownDownloader: ${failedCount.get()} 个片段下载失败（<= 20%），继续合并")
             }
 
             // 5. 合并 TS 文件
@@ -143,11 +142,15 @@ class FluxDownDownloader(
 
         } catch (e: Exception) {
             if (!cancelled) {
-                Log.e(TAG, "下载异常", e)
+                Logger.e("FluxDownDownloader: 下载异常", e)
                 callback.onError("下载失败: ${e.message ?: "未知错误"}")
             }
         } finally {
             executor.shutdownNow()
+            // 如果未正常完成（取消或异常），清理临时片段文件
+            if (cancelled || failedCount.get() > 0) {
+                cleanupTempFiles()
+            }
             cleanup()
         }
     }
@@ -159,6 +162,8 @@ class FluxDownDownloader(
         }
         activeCalls.clear()
         executor.shutdownNow()
+        // 取消时清理已下载的临时片段文件
+        cleanupTempFiles()
     }
 
     // ==================== M3U8 解析 ====================
@@ -170,11 +175,11 @@ class FluxDownDownloader(
     private fun resolvePlaylist(): String {
         val responseBody = httpGetString(m3u8Url)
             ?: throw RuntimeException("无法获取播放列表: $m3u8Url")
-        Log.i(TAG, "播放列表获取成功, 大小=${responseBody.length} bytes")
+        Logger.i("FluxDownDownloader: 播放列表获取成功, 大小=${responseBody.length} bytes")
 
         // 判断是否为 Master Playlist
         if (responseBody.contains("#EXT-X-STREAM-INF")) {
-            Log.i(TAG, "检测到 Master Playlist，解析 Media Playlist URL")
+            Logger.i("FluxDownDownloader: 检测到 Master Playlist，解析 Media Playlist URL")
             return resolveMasterPlaylist(responseBody)
         }
 
@@ -218,7 +223,7 @@ class FluxDownDownloader(
             throw RuntimeException("Master Playlist 中未找到 Media Playlist URL")
         }
 
-        Log.i(TAG, "选中 Media Playlist (带宽=${bestBandwidth}): $bestUrl")
+        Logger.i("FluxDownDownloader: 选中 Media Playlist (带宽=${bestBandwidth}): $bestUrl")
         return bestUrl
     }
 
@@ -273,7 +278,7 @@ class FluxDownDownloader(
             }
         }
 
-        Log.i(TAG, "Media Playlist 解析完成: ${segments.size} 个片段" +
+        Logger.i("FluxDownDownloader: Media Playlist 解析完成: ${segments.size} 个片段" +
                 ", targetDuration=$targetDuration, mediaSequence=$mediaSequence" +
                 (if (keyInfo != null) ", AES-128 加密" else ""))
 
@@ -293,7 +298,7 @@ class FluxDownDownloader(
         val ivMatch = Regex("IV=(0x[0-9A-Fa-f]+)").find(tag)
         val ivHex = ivMatch?.groupValues?.get(1)
 
-        Log.i(TAG, "AES-128 密钥信息: URI=$uri, IV=${ivHex ?: "使用序列号"}")
+        Logger.i("FluxDownDownloader: AES-128 密钥信息: URI=$uri, IV=${ivHex ?: "使用序列号"}")
         return AESKeyInfo(uri, ivHex)
     }
 
@@ -304,16 +309,16 @@ class FluxDownDownloader(
      */
     private fun fetchAESKey(keyInfo: AESKeyInfo): ByteArray? {
         val keyUrl = resolveUrl(m3u8Url, keyInfo.uri)
-        Log.i(TAG, "获取 AES-128 密钥: $keyUrl")
+        Logger.i("FluxDownDownloader: 获取 AES-128 密钥: $keyUrl")
 
         val body = httpGetBytes(keyUrl)
         if (body == null) {
-            Log.e(TAG, "AES-128 密钥获取失败: $keyUrl (检查 Header/Referer/UA/Cookie)")
+            Logger.e("FluxDownDownloader: AES-128 密钥获取失败: $keyUrl (检查 Header/Referer/UA/Cookie)")
             return null
         }
 
         if (body.size != 16) {
-            Log.e(TAG, "AES-128 密钥长度异常: 期望 16 bytes, 实际 ${body.size} bytes")
+            Logger.e("FluxDownDownloader: AES-128 密钥长度异常: 期望 16 bytes, 实际 ${body.size} bytes")
             // 仍返回，让解密阶段报错
         }
 
@@ -381,7 +386,7 @@ class FluxDownDownloader(
                     }
                 } catch (e: Exception) {
                     if (!cancelled) {
-                        Log.e(TAG, "片段下载异常 index=$index", e)
+                        Logger.e("FluxDownDownloader: 片段下载异常 index=$index", e)
                         failedCount.incrementAndGet()
                     }
                 } finally {
@@ -392,7 +397,7 @@ class FluxDownDownloader(
 
         // 等待所有下载完成或取消
         latch.await(30, TimeUnit.MINUTES)
-        Log.i(TAG, "下载完成: ${downloadedCount.get()}/$totalSegments 成功, ${failedCount.get()} 失败")
+        Logger.i("FluxDownDownloader: 下载完成: ${downloadedCount.get()}/$totalSegments 成功, ${failedCount.get()} 失败")
     }
 
     /**
@@ -420,7 +425,7 @@ class FluxDownDownloader(
 
                     if (!response.isSuccessful) {
                         lastError = "HTTP ${response.code} ${response.message}"
-                        Log.w(TAG, "片段 $index 下载失败 (尝试 $attempt/$MAX_RETRIES): $lastError, URL: ${segment.url}")
+                        Logger.w("FluxDownDownloader: 片段 $index 下载失败 (尝试 $attempt/$MAX_RETRIES): $lastError, URL: ${segment.url}")
                         // 如果被限流，等待重试
                         if (response.code == 429 || response.code == 503) {
                             Thread.sleep(2000L * attempt)
@@ -431,7 +436,7 @@ class FluxDownDownloader(
                     val body = response.body
                     if (body == null) {
                         lastError = "响应体为空"
-                        Log.w(TAG, "片段 $index 响应体为空 (尝试 $attempt/$MAX_RETRIES)")
+                        Logger.w("FluxDownDownloader: 片段 $index 响应体为空 (尝试 $attempt/$MAX_RETRIES)")
                         return@use false
                     }
 
@@ -439,7 +444,7 @@ class FluxDownDownloader(
                     val data = body.bytes()
                     if (data.isEmpty()) {
                         lastError = "数据为空"
-                        Log.w(TAG, "片段 $index 数据为空 (尝试 $attempt/$MAX_RETRIES)")
+                        Logger.w("FluxDownDownloader: 片段 $index 数据为空 (尝试 $attempt/$MAX_RETRIES)")
                         return@use false
                     }
 
@@ -452,7 +457,7 @@ class FluxDownDownloader(
 
                     if (decryptedData == null) {
                         lastError = "AES-128 解密失败"
-                        Log.e(TAG, "片段 $index AES-128 解密失败 (尝试 $attempt/$MAX_RETRIES)")
+                        Logger.e("FluxDownDownloader: 片段 $index AES-128 解密失败 (尝试 $attempt/$MAX_RETRIES)")
                         return@use false
                     }
 
@@ -463,19 +468,18 @@ class FluxDownDownloader(
                         fos.flush()
                     }
 
-                    Log.d(TAG, "片段 $index 下载成功: ${tempFile.length()} bytes (尝试 $attempt)")
                     return true
                 }
             } catch (e: Exception) {
                 lastError = e.message ?: e.javaClass.simpleName
-                Log.w(TAG, "片段 $index 下载异常 (尝试 $attempt/$MAX_RETRIES): $lastError")
+                Logger.w("FluxDownDownloader: 片段 $index 下载异常 (尝试 $attempt/$MAX_RETRIES): $lastError")
                 if (attempt < MAX_RETRIES) {
                     Thread.sleep(1000L * attempt)
                 }
             }
         }
 
-        Log.e(TAG, "片段 $index 下载失败 (已重试 $MAX_RETRIES 次): $lastError, URL: ${segment.url}")
+        Logger.e("FluxDownDownloader: 片段 $index 下载失败 (已重试 $MAX_RETRIES 次): $lastError, URL: ${segment.url}")
         return false
     }
 
@@ -492,7 +496,7 @@ class FluxDownDownloader(
             cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec)
             cipher.doFinal(data)
         } catch (e: Exception) {
-            Log.e(TAG, "AES-128 解密失败: ${e.message}")
+            Logger.e("FluxDownDownloader: AES-128 解密失败: ${e.message}")
             null
         }
     }
@@ -504,7 +508,7 @@ class FluxDownDownloader(
      */
     private fun mergeTSFiles(segmentCount: Int) {
         val outputFile = File(outputDir, outputFileName)
-        Log.i(TAG, "开始合并 TS 文件: ${outputFile.absolutePath}")
+        Logger.i("FluxDownDownloader: 开始合并 TS 文件: ${outputFile.absolutePath}")
 
         // 确保父目录存在
         outputFile.parentFile?.mkdirs()
@@ -527,7 +531,7 @@ class FluxDownDownloader(
 
                     val tempFile = File(outputDir, "${taskId}_seg_${"%06d".format(i)}.tmp")
                     if (!tempFile.exists() || tempFile.length() == 0L) {
-                        Log.w(TAG, "合并跳过缺失片段 $i")
+                        Logger.w("FluxDownDownloader: 合并跳过缺失片段 $i")
                         continue
                     }
 
@@ -539,11 +543,7 @@ class FluxDownDownloader(
                         }
                     }
 
-                    // 合并进度（粗略）
-                    if (i % 10 == 0 || i == segmentCount - 1) {
-                        Log.d(TAG, "合并进度: ${i + 1}/$segmentCount, 已写入 $totalMerged bytes")
                     }
-                }
                 fos.flush()
             }
 
@@ -554,21 +554,21 @@ class FluxDownDownloader(
 
             // 验证
             if (outputFile.exists() && outputFile.length() > 0) {
-                Log.i(TAG, "合并完成: ${outputFile.absolutePath}, 大小=${outputFile.length()} bytes")
+                Logger.i("FluxDownDownloader: 合并完成: ${outputFile.absolutePath}, 大小=${outputFile.length()} bytes")
                 // 回调异常（如 Notify 在主线程之外的崩溃）不应导致已合并文件被删
                 try {
                     callback.onSuccess(outputFile)
                 } catch (e: Exception) {
-                    Log.e(TAG, "onSuccess 回调异常, 但文件已合并成功", e)
+                    Logger.e("FluxDownDownloader: onSuccess 回调异常, 但文件已合并成功", e)
                     // 文件已合并成功，通知上层任务完成
                 }
             } else {
-                Log.e(TAG, "合并失败: 输出文件为空")
+                Logger.e("FluxDownDownloader: 合并失败: 输出文件为空")
                 callback.onError("合并后的文件为空")
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "合并异常", e)
+            Logger.e("FluxDownDownloader: 合并异常", e)
             outputFile.delete()
             callback.onError("合并失败: ${e.message ?: "未知错误"}")
         } finally {
@@ -615,7 +615,7 @@ class FluxDownDownloader(
             activeCalls.remove(call)
 
             if (!response.isSuccessful) {
-                Log.w(TAG, "HTTP GET 失败: ${response.code} ${response.message} URL: $url")
+                Logger.w("FluxDownDownloader: HTTP GET 失败: ${response.code} ${response.message} URL: $url")
                 response.close()
                 return null
             }
@@ -625,7 +625,7 @@ class FluxDownDownloader(
             return body
         } catch (e: Exception) {
             if (!cancelled) {
-                Log.e(TAG, "HTTP GET 异常: $url, ${e.message}")
+                Logger.e("FluxDownDownloader: HTTP GET 异常: $url, ${e.message}")
             }
             return null
         }
@@ -644,7 +644,7 @@ class FluxDownDownloader(
             activeCalls.remove(call)
 
             if (!response.isSuccessful) {
-                Log.w(TAG, "HTTP GET bytes 失败: ${response.code} ${response.message} URL: $url")
+                Logger.w("FluxDownDownloader: HTTP GET bytes 失败: ${response.code} ${response.message} URL: $url")
                 response.close()
                 return null
             }
@@ -654,7 +654,7 @@ class FluxDownDownloader(
             return body
         } catch (e: Exception) {
             if (!cancelled) {
-                Log.e(TAG, "HTTP GET bytes 异常: $url, ${e.message}")
+                Logger.e("FluxDownDownloader: HTTP GET bytes 异常: $url, ${e.message}")
             }
             return null
         }
@@ -686,5 +686,18 @@ class FluxDownDownloader(
     private fun cleanup() {
         activeCalls.clear()
         executor.shutdownNow()
+    }
+
+    /**
+     * 删除本次下载产生的所有临时片段文件
+     * 在取消、下载失败或异常时调用，防止 .tmp 文件残留
+     */
+    private fun cleanupTempFiles() {
+        for (i in 0 until totalSegments) {
+            val tempFile = File(outputDir, "${taskId}_seg_${"%06d".format(i)}.tmp")
+            if (tempFile.exists()) {
+                tempFile.delete()
+            }
+        }
     }
 }

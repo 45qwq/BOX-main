@@ -54,4 +54,5 @@ internal interface SubscriptionListener {
     fun established(subscriptionId: String?) {}
     fun ended(subscriptionId: String?) {}
     fun onReceived(subscriptionId: String?, event: EventedValue<*>) {}
+    fun eventsMissed(numberOfMissedEvents: Int) {}
 }

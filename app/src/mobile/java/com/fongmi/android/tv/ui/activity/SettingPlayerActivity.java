@@ -52,6 +52,9 @@ public class SettingPlayerActivity extends BaseActivity implements UaCallback, B
         mBinding.audioDecodeSwitch.setChecked(Setting.isAudioPrefer());
         mBinding.aacSwitch.setChecked(Setting.isPreferAAC());
         mBinding.danmakuLoadSwitch.setChecked(Setting.isDanmakuLoad());
+        mBinding.anime4kSwitch.setChecked(Setting.isAnime4K());
+        mBinding.anime4kStrengthText.setText(getAnime4KStrengthText());
+        mBinding.anime4kStrength.setVisibility(Setting.isAnime4K() ? View.VISIBLE : View.GONE);
         mBinding.speedText.setText(format.format(Setting.getSpeed()));
         mBinding.bufferText.setText(String.valueOf(Setting.getBuffer()));
         mBinding.caption.setVisibility(Setting.hasCaption() ? View.VISIBLE : View.GONE);
@@ -59,7 +62,6 @@ public class SettingPlayerActivity extends BaseActivity implements UaCallback, B
         mBinding.renderText.setText((render = ResUtil.getStringArray(R.array.select_render))[Setting.getRender()]);
         mBinding.captionText.setText((caption = ResUtil.getStringArray(R.array.select_caption))[Setting.isCaption() ? 1 : 0]);
         mBinding.backgroundText.setText((background = ResUtil.getStringArray(R.array.select_background))[Setting.getBackground()]);
-        mBinding.playerEngineText.setText(getPlayerEngineText());
     }
 
     @Override
@@ -70,7 +72,6 @@ public class SettingPlayerActivity extends BaseActivity implements UaCallback, B
         mBinding.speed.setOnClickListener(this::onSpeed);
         mBinding.buffer.setOnClickListener(this::onBuffer);
         mBinding.render.setOnClickListener(this::setRender);
-        mBinding.playerEngine.setOnClickListener(this::setPlayerEngine);
         mBinding.caption.setOnClickListener(this::setCaption);
         mBinding.caption.setOnLongClickListener(this::onCaption);
         mBinding.background.setOnClickListener(this::onBackground);
@@ -80,6 +81,8 @@ public class SettingPlayerActivity extends BaseActivity implements UaCallback, B
         mBinding.audioDecodeSwitch.setOnClickListener(this::setAudioDecode);
         mBinding.aacSwitch.setOnClickListener(this::setAAC);
         mBinding.danmakuLoadSwitch.setOnClickListener(this::setDanmakuLoad);
+        mBinding.anime4kSwitch.setOnClickListener(this::setAnime4K);
+        mBinding.anime4kStrength.setOnClickListener(this::setAnime4KStrength);
     }
 
     private void onUa(View view) {
@@ -117,7 +120,7 @@ public class SettingPlayerActivity extends BaseActivity implements UaCallback, B
     }
 
     private void onBuffer(View view) {
-        BufferDialog.create(this).show();
+        BufferDialog.create(this).show(this);
     }
 
     @Override
@@ -131,27 +134,6 @@ public class SettingPlayerActivity extends BaseActivity implements UaCallback, B
         Setting.putRender(index = index == render.length - 1 ? 0 : ++index);
         mBinding.renderText.setText(render[index]);
         if (Setting.isTunnel() && Setting.getRender() == 1) setTunnel(view);
-    }
-
-    private String getPlayerEngineText() {
-        int engine = Setting.getPlayerEngine();
-        switch (engine) {
-            case 0: return "ExoPlayer (软解)";
-            case 1: return "ExoPlayer (硬解)";
-            case 2: return "ExoPlayer (自动)";
-            case 3: return "MPV";
-            default: return "ExoPlayer (自动)";
-        }
-    }
-
-    private void setPlayerEngine(View view) {
-        String[] engines = new String[]{"ExoPlayer (软解)", "ExoPlayer (硬解)", "ExoPlayer (自动)", "MPV"};
-        int current = Setting.getPlayerEngine();
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle("播放器引擎").setNegativeButton(R.string.dialog_negative, null).setSingleChoiceItems(engines, current, (dialog, which) -> {
-            Setting.putPlayerEngine(which);
-            mBinding.playerEngineText.setText(engines[which]);
-            dialog.dismiss();
-        }).show();
     }
 
     private void setTunnel(View view) {
@@ -190,4 +172,24 @@ public class SettingPlayerActivity extends BaseActivity implements UaCallback, B
         Setting.putDanmakuLoad(isChecked);
         // 不需要再次调用 setChecked，因为点击已经触发了状态变化
     }
-} 
+
+    private void setAnime4K(View view) {
+        boolean isChecked = !Setting.isAnime4K();
+        Setting.putAnime4K(isChecked);
+        mBinding.anime4kStrength.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+    }
+
+    private String getAnime4KStrengthText() {
+        int strength = Setting.getAnime4KStrength();
+        String[] arr = getResources().getStringArray(R.array.select_anime4k_strength);
+        return arr[strength];
+    }
+
+    private void setAnime4KStrength(View view) {
+        String[] arr = getResources().getStringArray(R.array.select_anime4k_strength);
+        int current = Setting.getAnime4KStrength();
+        int next = (current + 1) % arr.length;
+        Setting.putAnime4KStrength(next);
+        mBinding.anime4kStrengthText.setText(arr[next]);
+    }
+}

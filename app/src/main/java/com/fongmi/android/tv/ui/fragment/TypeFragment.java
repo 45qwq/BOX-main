@@ -115,16 +115,9 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
     protected void initEvent() {
         mBinding.swipeLayout.setOnRefreshListener(this);
         mBinding.recycler.addOnScrollListener(mScroller = new CustomScroller(this));
-        // 快速滑动时暂停 Glide 图片加载，停止后恢复
-        mBinding.recycler.addOnScrollListener(new androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrollStateChanged(@NonNull androidx.recyclerview.widget.RecyclerView recyclerView, int newState) {
-                if (newState == androidx.recyclerview.widget.RecyclerView.SCROLL_STATE_DRAGGING || newState == androidx.recyclerview.widget.RecyclerView.SCROLL_STATE_SETTLING) {
-                    Glide.with(App.get()).pauseRequests();
-                } else {
-                    Glide.with(App.get()).resumeRequests();
-                }
-            }
+        // ViewHolder 回收时取消对应 Glide 请求，代替全局暂停/恢复
+        mBinding.recycler.setRecyclerListener(holder -> {
+            Glide.with(App.get()).clear(holder.itemView);
         });
     }
 

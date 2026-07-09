@@ -27,6 +27,15 @@
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
+                <ImageView
+                    android:id="@+id/settingBack"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/shape_action_background"
+                    android:src="@drawable/ic_back"
+                    app:tint="@color/white" />
+
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -35,26 +44,6 @@
                     android:textColor="@color/white"
                     android:textSize="24sp"
                     android:textStyle="bold" />
-
-                <!-- 扫码绑定按钮 -->
-                <LinearLayout
-                    android:id="@+id/syncSettings"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/shape_sync_button"
-                    android:gravity="center"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_action_scan"
-                        android:tint="@color/white" />
-
-                </LinearLayout>
 
             </LinearLayout>
 
@@ -160,7 +149,7 @@
                     android:padding="16dp"
                     android:scaleType="fitCenter"
                     android:src="@drawable/potted_plant_24px"
-                    android:tint="@color/white" />
+                    app:tint="@color/white" />
 
                 <ImageView
                     android:id="@+id/vodHistory"
@@ -170,72 +159,9 @@
                     android:padding="16dp"
                     android:scaleType="fitCenter"
                     android:src="@drawable/ic_m3_list_alt"
-                    android:tint="@color/white" />
+                    app:tint="@color/white" />
 
             </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/liveContainer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <LinearLayout
-                    android:id="@+id/live"
-                    android:layout_width="0dp"
-                    android:layout_height="56dp"
-                    android:layout_marginEnd="12dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/shape_item"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="16dp"
-                        android:text="@string/setting_live"
-                        android:textColor="@color/white"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:id="@+id/liveUrl"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="middle"
-                        android:gravity="end"
-                        android:singleLine="true"
-                        android:textColor="@color/white"
-                        android:textSize="16sp"
-                        tools:text="https://" />
-
-                </LinearLayout>
-
-                <ImageView
-                    android:id="@+id/liveHome"
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
-                    android:layout_marginEnd="12dp"
-                    android:background="@drawable/shape_item"
-                    android:padding="16dp"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/potted_plant_24px"
-                    android:tint="@color/white" />
-
-                <ImageView
-                    android:id="@+id/liveHistory"
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
-                    android:background="@drawable/shape_item"
-                    android:padding="16dp"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/ic_m3_list_alt"
-                    android:tint="@color/white" />
-
-            </LinearLayout>
-
 
             <!-- 应用设置分组 -->
             <TextView
@@ -264,18 +190,70 @@
                     android:orientation="horizontal"
                     android:paddingTop="16dp"
                     android:paddingBottom="12dp">
-                    
+
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/hive_24px"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="@string/setting_player"
+                        android:textColor="@color/white"
+                        android:textSize="16sp" />
+
+                </LinearLayout>
+
+                <!-- 我的收藏 -->
+                <LinearLayout
+                    android:id="@+id/collectLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_marginEnd="16dp"
+                        android:src="@drawable/ic_action_keep"
+                        app:tint="@color/white" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="我的收藏"
+                        android:textColor="@color/white"
+                        android:textSize="16sp" />
+
+                </LinearLayout>
+
+                <!-- 历史记录 -->
+                <LinearLayout
+                    android:id="@+id/historyLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_marginEnd="16dp"
+                        android:src="@drawable/ic_action_history"
+                        app:tint="@color/white" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="历史记录"
                         android:textColor="@color/white"
                         android:textSize="16sp" />
 
@@ -296,7 +274,7 @@
                         android:layout_height="24dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/ic_action_download"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
 
                     <TextView
                         android:layout_width="match_parent"
@@ -322,7 +300,7 @@
                         android:layout_height="24dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/ic_action_download"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
 
                     <TextView
                         android:layout_width="0dp"
@@ -358,7 +336,7 @@
                         android:layout_height="24dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/ic_action_download"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
 
                     <TextView
                         android:layout_width="0dp"
@@ -394,7 +372,7 @@
                         android:layout_height="24dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/domino_mask_24px"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
 
                     <TextView
                         android:layout_width="0dp"
@@ -406,38 +384,6 @@
 
                     <com.fongmi.android.tv.ui.custom.CustomSwitch
                         android:id="@+id/incognitoSwitch"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
-
-                </LinearLayout>
-                
-                <!-- 显示直播 -->
-                <LinearLayout
-                    android:id="@+id/liveTabVisible"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingTop="16dp"
-                    android:paddingBottom="16dp">
-                    
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_marginEnd="16dp"
-                        android:src="@drawable/ic_nav_live"
-                        android:tint="@color/white" />
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/setting_live_tab_visible"
-                        android:textColor="@color/white"
-                        android:textSize="16sp" />
-
-                    <com.fongmi.android.tv.ui.custom.CustomSwitch
-                        android:id="@+id/liveTabVisibleSwitch"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content" />
 
@@ -457,7 +403,7 @@
                         android:layout_height="24dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/select_all_24px"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -492,7 +438,7 @@
                         android:layout_height="24dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/photo_prints_24px"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
 
                     <TextView
                         android:layout_width="0dp"
@@ -548,7 +494,7 @@
                         android:layout_height="24dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/globe_book_24px"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
                     
                     <TextView
                         android:layout_width="wrap_content"
@@ -583,7 +529,7 @@
                         android:layout_height="24dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/ic_fab_link"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -618,7 +564,7 @@
                         android:layout_height="24dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/owl_24px"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -738,7 +684,7 @@
                         android:layout_marginStart="16dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/photo_prints_24px"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
                         
                     <TextView
                         android:id="@+id/backup"
@@ -793,7 +739,7 @@
                         android:layout_height="24dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/ic_setting_github"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
 
                     <TextView
                         android:id="@+id/versionText"
@@ -819,7 +765,7 @@
                         android:layout_height="24dp"
                         android:layout_marginEnd="16dp"
                         android:src="@drawable/egg_24px"
-                        android:tint="@color/white" />
+                        app:tint="@color/white" />
 
                     <TextView
                         android:layout_width="match_parent"

@@ -8,7 +8,6 @@
     <string name="nav_home">Home</string>
     <string name="nav_keep">Favorite</string>
     <string name="nav_vod">Video</string>
-    <string name="nav_live">Live</string>
     <string name="nav_setting">Setting</string>
 
     <!-- Vod -->
@@ -35,6 +34,7 @@
     <string name="device_select">Select devices</string>
     <string name="device_offline">Device is offline</string>
     <string name="device_scan">Please scan QR Code to bind</string>
+    <string name="cast_in_progress">Casting in progress...</string>
 
     <!-- Control -->
     <string name="control_speed">Speed</string>

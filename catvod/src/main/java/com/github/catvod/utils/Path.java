@@ -82,11 +82,19 @@ public class Path {
     }
 
     public static File download() {
-        // 使用 app-specific 目录，无需额外存储权限（Android 11+ 推荐做法）
-        // 路径: Android/data/com.fongmi.android.tv/files/Download/mxbox/movie
+        // 优先使用公共 Download 目录，让用户可以直接通过文件管理器访问
+        // 路径: /storage/emulated/0/Download/mxbox/movie
+        // 如果不可写（Android 11+ 作用域存储限制），回退到 app-specific 目录
+        File publicDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + File.separator + "mxbox" + File.separator + "movie");
+        if (!publicDir.exists()) publicDir.mkdirs();
+        if (publicDir.canWrite()) {
+            Log.i(TAG, "下载路径: " + publicDir.getAbsolutePath() + " 可写: " + publicDir.canWrite());
+            return publicDir;
+        }
+        // 回退: Android/data/com.fongmi.android.tv/files/Download/mxbox/movie
         File dir = new File(Init.context().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) + File.separator + "mxbox" + File.separator + "movie");
         if (!dir.exists()) dir.mkdirs();
-        Log.i(TAG, "下载路径: " + dir.getAbsolutePath() + " 可写: " + dir.canWrite());
+        Log.i(TAG, "下载路径(回退): " + dir.getAbsolutePath() + " 可写: " + dir.canWrite());
         return dir;
     }
 

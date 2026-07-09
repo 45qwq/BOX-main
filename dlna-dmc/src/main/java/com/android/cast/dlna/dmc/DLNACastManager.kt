@@ -152,15 +152,7 @@ object DLNACastManager : OnDeviceRegistryListener {
     fun search(type: DeviceType? = null) {
         upnpService?.get()?.also { service ->
             searchDeviceType = type
-            service.registry.devices?.filter { searchDeviceType == null || searchDeviceType != it.type }?.onEach {
-                // notify device removed without type check.
-                registerDeviceListeners.forEach { listener -> listener.onDeviceRemoved(it) }
-                service.registry.removeDevice(it.identity.udn)
-            }
-            // when search device, clear all founded first.
-            // service.registry.removeAllRemoteDevices()
-
-            // search the special type device
+            // 增量更新：不主动移除设备，依赖 Registry 的心跳超时机制自动清理已断开设备
             service.controlPoint.search(type?.let { UDADeviceTypeHeader(it) } ?: STAllHeader())
         }
     }
@@ -178,7 +170,6 @@ object DLNACastManager : OnDeviceRegistryListener {
     }
 
     fun disconnectDevice(device: Device<*, *, *>) {
-        (deviceControlMap[device] as? CastControlImpl)?.released = true
-        deviceControlMap[device] = null
+        (deviceControlMap.remove(device) as? CastControlImpl)?.released = true
     }
 }

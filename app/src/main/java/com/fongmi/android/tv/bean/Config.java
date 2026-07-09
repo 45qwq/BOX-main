@@ -3,7 +3,6 @@ package com.fongmi.android.tv.bean;
 import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
-import androidx.lifecycle.LiveData;
 import androidx.room.Entity;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
@@ -186,10 +185,6 @@ public class Config {
         return AppDatabase.get().getConfigDao().findByType(type);
     }
 
-    public static LiveData<List<Config>> getAllLive(int type) {
-        return AppDatabase.get().getConfigDao().findByTypeLive(type);
-    }
-
     public static List<Config> findUrls() {
         return AppDatabase.get().getConfigDao().findUrlByType(0);
     }
@@ -209,43 +204,18 @@ public class Config {
         return item == null ? create(0) : item;
     }
 
-    public static LiveData<Config> vodLive() {
-        return AppDatabase.get().getConfigDao().findOneLive(0);
-    }
-
-    public static Config live() {
-        Config item = AppDatabase.get().getConfigDao().findOne(1);
-        return item == null ? create(1) : item;
-    }
-
-    public static LiveData<Config> liveLive() {
-        return AppDatabase.get().getConfigDao().findOneLive(1);
-    }
-
     public static Config wall() {
         Config item = AppDatabase.get().getConfigDao().findOne(2);
         return item == null ? create(2) : item;
-    }
-
-    public static LiveData<Config> wallLive() {
-        return AppDatabase.get().getConfigDao().findOneLive(2);
     }
 
     public static Config find(int id) {
         return AppDatabase.get().getConfigDao().findById(id);
     }
 
-    public static LiveData<Config> findLive(int id) {
-        return AppDatabase.get().getConfigDao().findByIdLive(id);
-    }
-
     public static Config find(String url, int type) {
         Config item = AppDatabase.get().getConfigDao().find(url, type);
         return item == null ? create(type, url) : item.type(type);
-    }
-
-    public static LiveData<Config> findLive(String url, int type) {
-        return AppDatabase.get().getConfigDao().findLive(url, type);
     }
 
     public static Config find(String url, String name, int type) {

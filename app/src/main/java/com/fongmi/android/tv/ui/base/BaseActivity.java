@@ -25,7 +25,6 @@ import androidx.core.content.ContextCompat;
 import androidx.viewbinding.ViewBinding;
 
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.Setting;
@@ -134,6 +133,9 @@ public abstract class BaseActivity extends AppCompatActivity {
     private void refreshWall() {
         try {
             if (!customWall()) return;
+            // 壁纸切换时清除内存缓存，确保新壁纸从磁盘加载
+            Glide.get(App.get()).clearMemory();
+            App.execute(() -> Glide.get(App.get()).clearDiskCache());
             int wallIndex = Setting.getWall();
             int screenWidth = ResUtil.getScreenWidth();
             int screenHeight = ResUtil.getScreenHeight();
@@ -143,8 +145,6 @@ public abstract class BaseActivity extends AppCompatActivity {
                     .load(wallIndex == 0 ? FileUtil.getWall(0) : ResUtil.getDrawable("wallpaper_" + wallIndex))
                     .override(screenWidth, screenHeight)
                     .transform(new com.bumptech.glide.load.resource.bitmap.CenterCrop())
-                    .skipMemoryCache(true)
-                    .diskCacheStrategy(DiskCacheStrategy.NONE)
                     .into(new com.bumptech.glide.request.target.CustomTarget<android.graphics.Bitmap>() {
                         @Override
                         public void onResourceReady(@NonNull android.graphics.Bitmap resource, @Nullable com.bumptech.glide.request.transition.Transition<? super android.graphics.Bitmap> transition) {

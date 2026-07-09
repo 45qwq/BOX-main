@@ -83,10 +83,14 @@ public class NativeBitmapFactory {
     }
 
     static void initField() {
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            nativeIntField = null;
+            return;
+        }
         try {
             nativeIntField = Bitmap.Config.class.getDeclaredField("nativeInt");
             nativeIntField.setAccessible(true);
-        } catch (NoSuchFieldException e) {
+        } catch (Exception e) {
             nativeIntField = null;
             e.printStackTrace();
         }

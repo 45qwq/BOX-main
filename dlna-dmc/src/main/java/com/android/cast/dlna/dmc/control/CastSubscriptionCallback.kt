@@ -37,6 +37,7 @@ internal class CastSubscriptionCallback(
 
     override fun eventsMissed(subscription: GENASubscription<*>, numberOfMissedEvents: Int) {
         logger.w("${getTag(subscription)} eventsMissed: $numberOfMissedEvents")
+        executeInMainThread { callback.eventsMissed(numberOfMissedEvents) }
     }
 
     override fun eventReceived(subscription: GENASubscription<*>) {
@@ -51,7 +52,9 @@ internal class CastSubscriptionCallback(
             }
         } catch (e: Exception) {
             logger.w("${getTag(subscription)} currentValues: ${subscription.currentValues}")
-            e.printStackTrace()
+            logger.e("${getTag(subscription)} parse error: ${e.message}")
+            // 解析异常触发重新订阅
+            executeInMainThread { callback.eventsMissed(1) }
         }
     }
 

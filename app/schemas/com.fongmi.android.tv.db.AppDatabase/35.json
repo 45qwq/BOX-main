@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 35,
-    "identityHash": "5e86942b0c1fa36d2652deba7ce836fe",
+    "identityHash": "5b1f2aa472f1736c22e9dab713e4e112",
     "entities": [
       {
         "tableName": "Keep",
@@ -17,20 +17,17 @@
           {
             "fieldPath": "siteName",
             "columnName": "siteName",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "vodName",
             "columnName": "vodName",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "vodPic",
             "columnName": "vodPic",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "createTime",
@@ -56,9 +53,7 @@
           "columnNames": [
             "key"
           ]
-        },
-        "indices": [],
-        "foreignKeys": []
+        }
       },
       {
         "tableName": "Site",
@@ -73,14 +68,12 @@
           {
             "fieldPath": "searchable",
             "columnName": "searchable",
-            "affinity": "INTEGER",
-            "notNull": false
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "changeable",
             "columnName": "changeable",
-            "affinity": "INTEGER",
-            "notNull": false
+            "affinity": "INTEGER"
           }
         ],
         "primaryKey": {
@@ -88,9 +81,7 @@
           "columnNames": [
             "key"
           ]
-        },
-        "indices": [],
-        "foreignKeys": []
+        }
       },
       {
         "tableName": "Live",
@@ -105,8 +96,7 @@
           {
             "fieldPath": "keep",
             "columnName": "keep",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "boot",
@@ -126,9 +116,7 @@
           "columnNames": [
             "name"
           ]
-        },
-        "indices": [],
-        "foreignKeys": []
+        }
       },
       {
         "tableName": "Track",
@@ -161,14 +149,12 @@
           {
             "fieldPath": "key",
             "columnName": "key",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "name",
             "columnName": "name",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "selected",
@@ -200,8 +186,7 @@
             "orders": [],
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_Track_key_type` ON `${TABLE_NAME}` (`key`, `type`)"
           }
-        ],
-        "foreignKeys": []
+        ]
       },
       {
         "tableName": "Config",
@@ -228,38 +213,32 @@
           {
             "fieldPath": "url",
             "columnName": "url",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "json",
             "columnName": "json",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "name",
             "columnName": "name",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "logo",
             "columnName": "logo",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "home",
             "columnName": "home",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "parse",
             "columnName": "parse",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -279,8 +258,7 @@
             "orders": [],
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_Config_url_type` ON `${TABLE_NAME}` (`url`, `type`)"
           }
-        ],
-        "foreignKeys": []
+        ]
       },
       {
         "tableName": "Device",
@@ -289,26 +267,22 @@
           {
             "fieldPath": "id",
             "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": false
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "uuid",
             "columnName": "uuid",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "name",
             "columnName": "name",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "ip",
             "columnName": "ip",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "type",
@@ -334,8 +308,7 @@
             "orders": [],
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_Device_uuid_name` ON `${TABLE_NAME}` (`uuid`, `name`)"
           }
-        ],
-        "foreignKeys": []
+        ]
       },
       {
         "tableName": "History",
@@ -350,32 +323,27 @@
           {
             "fieldPath": "vodPic",
             "columnName": "vodPic",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "vodName",
             "columnName": "vodName",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "vodFlag",
             "columnName": "vodFlag",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "vodRemarks",
             "columnName": "vodRemarks",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "episodeUrl",
             "columnName": "episodeUrl",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "revSort",
@@ -443,13 +411,11 @@
           "columnNames": [
             "key"
           ]
-        },
-        "indices": [],
-        "foreignKeys": []
+        }
       },
       {
         "tableName": "Download",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `vodPic` TEXT, `vodName` TEXT, `vodId` TEXT, `url` TEXT, `header` TEXT, `createTime` INTEGER NOT NULL, `progress` INTEGER NOT NULL, `status` TEXT, `statusInt` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `speed` INTEGER NOT NULL, `filePath` TEXT, `segmentInfo` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `vodPic` TEXT, `vodName` TEXT, `vodId` TEXT, `url` TEXT, `header` TEXT, `createTime` INTEGER NOT NULL, `progress` INTEGER NOT NULL, `status` TEXT, `statusInt` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `speed` INTEGER NOT NULL, `filePath` TEXT, `segmentInfo` TEXT, `errorMsg` TEXT, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -460,32 +426,27 @@
           {
             "fieldPath": "vodPic",
             "columnName": "vodPic",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "vodName",
             "columnName": "vodName",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "vodId",
             "columnName": "vodId",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "url",
             "columnName": "url",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "header",
             "columnName": "header",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "createTime",
@@ -502,8 +463,7 @@
           {
             "fieldPath": "status",
             "columnName": "status",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "statusInt",
@@ -526,14 +486,17 @@
           {
             "fieldPath": "filePath",
             "columnName": "filePath",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "segmentInfo",
             "columnName": "segmentInfo",
-            "affinity": "TEXT",
-            "notNull": false
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "errorMsg",
+            "columnName": "errorMsg",
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -541,15 +504,12 @@
           "columnNames": [
             "id"
           ]
-        },
-        "indices": [],
-        "foreignKeys": []
+        }
       }
     ],
-    "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5e86942b0c1fa36d2652deba7ce836fe')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5b1f2aa472f1736c22e9dab713e4e112')"
     ]
   }
 }

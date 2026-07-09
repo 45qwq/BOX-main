@@ -1,7 +1,7 @@
 package com.fongmi.android.tv.api;
 
 import android.text.TextUtils;
-import android.util.Log;
+import com.github.catvod.utils.Logger;
 
 import com.fongmi.android.tv.Setting;
 
@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,7 +26,7 @@ import java.util.regex.Pattern;
  */
 public class AIAdDetector {
 
-    private static final String TAG = "AIAdDetector";
+
     
     // 置信度阈值 (0-100)
     private static final int CONFIDENCE_THRESHOLD = 60;
@@ -43,7 +44,15 @@ public class AIAdDetector {
             "cpc", "cpm", "cpa", "ppv", "popunder",
             "spam", "splash", "stitial", "vast", "vmap"
     );
-    
+
+    // 预编译广告关键词正则（单词边界匹配，避免误判 admin/download 等）
+    private static final Pattern AD_KEYWORD_PATTERN = Pattern.compile(
+            "\\b(" + String.join("|", AD_KEYWORDS) + ")\\b", Pattern.CASE_INSENSITIVE
+    );
+
+    // 数字广告域名匹配（如 ad1, ads2）
+    private static final Pattern NUM_AD_PATTERN = Pattern.compile(".*(ad|ads)\\d+.*", Pattern.CASE_INSENSITIVE);
+
     // 广告域名后缀
     private static final List<String> AD_DOMAIN_SUFFIXES = Arrays.asList(
             "ads.", "ad.", "adserv.", "adserver.", "advert.",
@@ -91,18 +100,17 @@ public class AIAdDetector {
             "google.com", "googleapis.com", "googlevideo.com",
             "amazonaws.com", "cloudfront.net",
             "akamai", "cloudflare", "fastly",
-            "baidu.com", "alicdn.com", "taobao.com",
-            "qq.com", "qzone.com", "weixin.qq.com",
-            "youku.com", "iqiyi.com", "qq.com", "bilibili.com",
+            "alicdn.com", "weixin.qq.com",
+            "youku.com", "iqiyi.com", "bilibili.com",
             "douyin.com", "tiktok.com"
     );
     
     // 动态学习的域名记录
     private static final ConcurrentHashMap<String, Integer> learnedDomains = new ConcurrentHashMap<>();
     
-    // 检测统计
-    private static int totalChecked = 0;
-    private static int totalBlocked = 0;
+    // 检测统计（线程安全）
+    private static final AtomicInteger totalChecked = new AtomicInteger(0);
+    private static final AtomicInteger totalBlocked = new AtomicInteger(0);
     
     /**
      * 检测请求是否可能是广告
@@ -115,7 +123,7 @@ public class AIAdDetector {
             return false;
         }
         
-        totalChecked++;
+        totalChecked.incrementAndGet();
         
         try {
             @SuppressWarnings("deprecation")
@@ -134,10 +142,9 @@ public class AIAdDetector {
             
             // 3. 检查是否达到阈值
             if (confidence >= CONFIDENCE_THRESHOLD) {
-                totalBlocked++;
+                totalBlocked.incrementAndGet();
                 // 记录被拦截的域名用于学习
                 learnDomain(host, confidence);
-                Log.d(TAG, "AI检测到广告: " + urlString + " (置信度: " + confidence + "%)");
                 return true;
             }
             
@@ -145,7 +152,7 @@ public class AIAdDetector {
             if (learnedDomains.containsKey(host)) {
                 Integer learnedConfidence = learnedDomains.get(host);
                 if (learnedConfidence != null && learnedConfidence >= CONFIDENCE_THRESHOLD) {
-                    totalBlocked++;
+                    totalBlocked.incrementAndGet();
                     return true;
                 }
             }
@@ -158,7 +165,7 @@ public class AIAdDetector {
             return false;
             
         } catch (Exception e) {
-            Log.e(TAG, "检测URL时出错: " + urlString, e);
+            Logger.e("AIAdDetector: 检测URL时出错: " + urlString, e);
             return false;
         }
     }
@@ -207,17 +214,13 @@ public class AIAdDetector {
             }
         }
         
-        // 检查是否包含广告关键词
-        for (String keyword : AD_KEYWORDS) {
-            if (host.contains(keyword)) {
-                score += 20;
-                break;
-            }
+        // 检查是否包含广告关键词（使用单词边界匹配）
+        if (AD_KEYWORD_PATTERN.matcher(host).find()) {
+            score += 20;
         }
         
         // 检查数字广告域名 (如 ad1, ads2)
-        Pattern numPattern = Pattern.compile(".*(ad|ads)\\d+.*");
-        if (numPattern.matcher(host).matches()) {
+        if (NUM_AD_PATTERN.matcher(host).matches()) {
             score += 25;
         }
         
@@ -240,11 +243,9 @@ public class AIAdDetector {
         // 检查路径中的广告关键词
         String[] pathParts = path.split("/");
         for (String part : pathParts) {
-            for (String keyword : AD_KEYWORDS) {
-                if (part.equalsIgnoreCase(keyword) || part.contains(keyword)) {
-                    score += 15;
-                    break;
-                }
+            if (AD_KEYWORD_PATTERN.matcher(part).find()) {
+                score += 15;
+                break;
             }
         }
         
@@ -292,10 +293,9 @@ public class AIAdDetector {
         // 组合特征：包含多个广告关键词
         int keywordCount = 0;
         String combined = host + path + query;
-        for (String keyword : AD_KEYWORDS) {
-            if (combined.contains(keyword)) {
-                keywordCount++;
-            }
+        Matcher matcher = AD_KEYWORD_PATTERN.matcher(combined);
+        while (matcher.find()) {
+            keywordCount++;
         }
         if (keywordCount >= 3) {
             score += 5;
@@ -331,8 +331,8 @@ public class AIAdDetector {
      */
     public static Map<String, Integer> getStats() {
         Map<String, Integer> stats = new HashMap<>();
-        stats.put("totalChecked", totalChecked);
-        stats.put("totalBlocked", totalBlocked);
+        stats.put("totalChecked", totalChecked.get());
+        stats.put("totalBlocked", totalBlocked.get());
         stats.put("learnedDomains", learnedDomains.size());
         return stats;
     }
@@ -341,8 +341,8 @@ public class AIAdDetector {
      * 重置统计
      */
     public static void resetStats() {
-        totalChecked = 0;
-        totalBlocked = 0;
+        totalChecked.set(0);
+        totalBlocked.set(0);
     }
     
     /**

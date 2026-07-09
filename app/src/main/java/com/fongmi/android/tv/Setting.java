@@ -7,6 +7,7 @@ import android.provider.DocumentsContract;
 import android.provider.Settings;
 
 import com.fongmi.android.tv.player.Players;
+import com.github.catvod.utils.Logger;
 
 import java.io.File;
 import com.github.catvod.utils.Prefers;
@@ -77,14 +78,6 @@ public class Setting {
         Prefers.put("decode", decode);
     }
 
-    public static int getPlayerEngine() {
-        return Prefers.getInt("player_engine", Players.AUTO);
-    }
-
-    public static void putPlayerEngine(int engine) {
-        Prefers.put("player_engine", engine);
-    }
-
     public static int getRender() {
         return Prefers.getInt("render", 0);
     }
@@ -125,14 +118,6 @@ public class Setting {
         Prefers.put("scale", scale);
     }
 
-    public static int getLiveScale() {
-        return Prefers.getInt("scale_live", getScale());
-    }
-
-    public static void putLiveScale(int scale) {
-        Prefers.put("scale_live", scale);
-    }
-
     public static int getBuffer() {
         return Math.min(Math.max(Prefers.getInt("buffer"), 1), 10);
     }
@@ -171,14 +156,6 @@ public class Setting {
 
     public static void putIncognito(boolean incognito) {
         Prefers.put("incognito", incognito);
-    }
-
-    public static boolean isBootLive() {
-        return Prefers.getBoolean("boot_live");
-    }
-
-    public static void putBootLive(boolean boot) {
-        Prefers.put("boot_live", boot);
     }
 
     public static boolean isInvert() {
@@ -345,14 +322,6 @@ public class Setting {
         Prefers.put("privacy_agreed_v1", agreed);
     }
 
-    public static boolean isLiveTabVisible() {
-        return Prefers.getBoolean("live_tab_visible", true);
-    }
-
-    public static void putLiveTabVisible(boolean visible) {
-        Prefers.put("live_tab_visible", visible);
-    }
-
     // 局域网自动同步配置
     public static boolean isAutoSync() {
         return Prefers.getBoolean("auto_sync", false);
@@ -395,6 +364,24 @@ public class Setting {
 
     public static void putAIAdBlockEnabled(boolean enabled) {
         Prefers.put("ai_ad_block", enabled);
+    }
+
+    // Anime4K 视频超分
+    public static boolean isAnime4K() {
+        return Prefers.getBoolean("anime4k", false); // 默认关闭
+    }
+
+    public static void putAnime4K(boolean enabled) {
+        Prefers.put("anime4k", enabled);
+    }
+
+    // Anime4K 强度: 0=低 1=中 2=高
+    public static int getAnime4KStrength() {
+        return Prefers.getInt("anime4k_strength", 1); // 默认中
+    }
+
+    public static void putAnime4KStrength(int strength) {
+        Prefers.put("anime4k_strength", strength);
     }
 
     // WebDAV同步配置
@@ -492,7 +479,8 @@ public class Setting {
                 if (f.exists() && f.canWrite()) return f.getAbsolutePath();
                 if (f.exists()) return f.getAbsolutePath();
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            Logger.w("Setting getMountPath", e);
         }
         return "";
     }

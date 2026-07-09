@@ -1,9 +1,12 @@
 package com.android.cast.dlna.dmc.control
 
+import android.os.Handler
+import android.os.Looper
 import com.android.cast.dlna.dmc.DLNACastManager
 import com.android.cast.dlna.dmc.control.BaseServiceExecutor.AVServiceExecutorImpl
 import com.android.cast.dlna.dmc.control.BaseServiceExecutor.ContentServiceExecutorImpl
 import com.android.cast.dlna.dmc.control.BaseServiceExecutor.RendererServiceExecutorImpl
+import com.android.cast.dlna.core.Logger
 import org.fourthline.cling.controlpoint.ControlPoint
 import org.fourthline.cling.model.meta.Device
 import org.fourthline.cling.support.avtransport.lastchange.AVTransportLastChangeParser
@@ -13,43 +16,149 @@ import org.fourthline.cling.support.model.DIDLContent
 import org.fourthline.cling.support.model.MediaInfo
 import org.fourthline.cling.support.model.PositionInfo
 import org.fourthline.cling.support.model.TransportInfo
+import org.fourthline.cling.support.renderingcontrol.lastchange.EventedValueChannelMute
+import org.fourthline.cling.support.renderingcontrol.lastchange.EventedValueChannelVolume
 import org.fourthline.cling.support.renderingcontrol.lastchange.RenderingControlLastChangeParser
 
 class CastControlImpl(
     controlPoint: ControlPoint,
-    device: Device<*, *, *>,
-    listener: OnDeviceControlListener,
+    private val device: Device<*, *, *>,
+    private val listener: OnDeviceControlListener,
 ) : DeviceControl {
 
+    private val logger = Logger.create("CastControl")
+    private val handler = Handler(Looper.getMainLooper())
     private val avTransportService: AVServiceExecutorImpl
     private val renderService: RendererServiceExecutorImpl
     private val contentService: ContentServiceExecutorImpl
+
+    /** 定时轮询任务：每 8 秒查询投屏播放进度和状态 */
+    private val pollRunnable = Runnable { poll() }
+
     var released = false
 
     init {
         avTransportService = AVServiceExecutorImpl(controlPoint, device.findService(DLNACastManager.SERVICE_TYPE_AV_TRANSPORT))
-        avTransportService.subscribe(object : SubscriptionListener {
-            override fun failed(subscriptionId: String?) {
-                if (!released) listener.onDisconnected(device)
-            }
-
-            override fun established(subscriptionId: String?) {
-                if (!released) listener.onConnected(device)
-            }
-
-            override fun ended(subscriptionId: String?) {
-                if (!released) listener.onDisconnected(device)
-            }
-
-            override fun onReceived(subscriptionId: String?, event: EventedValue<*>) {
-                if (!released) listener.onEventChanged(event)
-            }
-        }, AVTransportLastChangeParser())
+        avTransportService.subscribe(createAVTransportListener(), AVTransportLastChangeParser())
         renderService = RendererServiceExecutorImpl(controlPoint, device.findService(DLNACastManager.SERVICE_TYPE_RENDERING_CONTROL))
-        renderService.subscribe(object : SubscriptionListener {}, RenderingControlLastChangeParser())
+        renderService.subscribe(createRendererListener(), RenderingControlLastChangeParser())
         contentService = ContentServiceExecutorImpl(controlPoint, device.findService(DLNACastManager.SERVICE_TYPE_CONTENT_DIRECTORY))
-        //TODO: check the parser
-        contentService.subscribe(object : SubscriptionListener {}, AVTransportLastChangeParser())
+        contentService.subscribe(createContentListener(), AVTransportLastChangeParser())
+    }
+
+    // ==================== 订阅回调 ====================
+
+    private fun createAVTransportListener(): SubscriptionListener = object : SubscriptionListener {
+        override fun failed(subscriptionId: String?) {
+            if (!released) listener.onDisconnected(device)
+        }
+
+        override fun established(subscriptionId: String?) {
+            if (!released) {
+                listener.onConnected(device)
+                startPolling()
+            }
+        }
+
+        override fun ended(subscriptionId: String?) {
+            if (!released) {
+                logger.w("AVTransport subscription ended, re-subscribing in 3s")
+                handler.postDelayed(Runnable {
+                    if (!released) avTransportService.subscribe(createAVTransportListener(), AVTransportLastChangeParser())
+                }, 3000)
+            }
+        }
+
+        override fun onReceived(subscriptionId: String?, event: EventedValue<*>) {
+            if (!released) listener.onEventChanged(event)
+        }
+
+        override fun eventsMissed(numberOfMissedEvents: Int) {
+            if (!released) {
+                logger.w("AVTransport eventsMissed: $numberOfMissedEvents, re-subscribing")
+                handler.post(Runnable {
+                    if (!released) avTransportService.subscribe(createAVTransportListener(), AVTransportLastChangeParser())
+                })
+            }
+        }
+    }
+
+    private fun createRendererListener(): SubscriptionListener = object : SubscriptionListener {
+        override fun established(subscriptionId: String?) {
+            logger.i("Renderer subscription established: $subscriptionId")
+        }
+
+        override fun ended(subscriptionId: String?) {
+            if (!released) {
+                logger.w("Renderer subscription ended, re-subscribing in 5s")
+                handler.postDelayed(Runnable {
+                    if (!released) renderService.subscribe(createRendererListener(), RenderingControlLastChangeParser())
+                }, 5000)
+            }
+        }
+
+        override fun failed(subscriptionId: String?) {
+            if (!released) {
+                logger.w("Renderer subscription failed, re-subscribing in 5s")
+                handler.postDelayed(Runnable {
+                    if (!released) renderService.subscribe(createRendererListener(), RenderingControlLastChangeParser())
+                }, 5000)
+            }
+        }
+
+        override fun onReceived(subscriptionId: String?, event: EventedValue<*>) {
+            if (!released) {
+                when (event) {
+                    is EventedValueChannelVolume -> listener.onRendererVolumeChanged(event.value.volume)
+                    is EventedValueChannelMute -> listener.onRendererVolumeMuteChanged(event.value.mute)
+                }
+            }
+        }
+
+        override fun eventsMissed(numberOfMissedEvents: Int) {
+            if (!released) {
+                logger.w("Renderer eventsMissed: $numberOfMissedEvents, re-subscribing")
+                handler.post(Runnable {
+                    if (!released) renderService.subscribe(createRendererListener(), RenderingControlLastChangeParser())
+                })
+            }
+        }
+    }
+
+    private fun createContentListener(): SubscriptionListener = object : SubscriptionListener {
+        override fun eventsMissed(numberOfMissedEvents: Int) {
+            if (!released) {
+                handler.post(Runnable {
+                    if (!released) contentService.subscribe(createContentListener(), AVTransportLastChangeParser())
+                })
+            }
+        }
+
+        override fun ended(subscriptionId: String?) {
+            if (!released) {
+                handler.postDelayed(Runnable {
+                    if (!released) contentService.subscribe(createContentListener(), AVTransportLastChangeParser())
+                }, 5000)
+            }
+        }
+    }
+
+    // ==================== 定时轮询 ====================
+
+    private fun startPolling() {
+        handler.removeCallbacks(pollRunnable)
+        handler.postDelayed(pollRunnable, 8000)
+    }
+
+    private fun stopPolling() {
+        handler.removeCallbacks(pollRunnable)
+    }
+
+    private fun poll() {
+        if (released) return
+        getPositionInfo(null)
+        getTransportInfo(null)
+        handler.postDelayed(pollRunnable, 8000)
     }
 
     // --------------------------------------------------------

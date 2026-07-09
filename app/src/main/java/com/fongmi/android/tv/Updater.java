@@ -261,7 +261,8 @@ public class Updater implements Download.Callback {
     private void dismiss() {
         try {
             if (dialog != null) dialog.dismiss();
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            Logger.w("Updater dismiss", e);
         }
     }
 

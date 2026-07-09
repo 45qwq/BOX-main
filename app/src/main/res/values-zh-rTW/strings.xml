@@ -6,11 +6,6 @@
     <!-- Vod -->
     <string name="vod_last">上次看到<xliff:g name="name">%s</xliff:g></string>
 
-    <!-- Live -->
-    <string name="live_pass">密碼</string>
-    <string name="live_refresh">刷新</string>
-    <string name="live_line">來源 <xliff:g name="name">%s</xliff:g></string>
-
     <!-- Detail -->
     <string name="detail_title"><xliff:g name="title">%s</xliff:g> : <xliff:g name="subtitle">%s</xliff:g></string>
     <string name="detail_site">站點：<xliff:g name="name">%s</xliff:g></string>
@@ -68,7 +63,6 @@
 
     <!-- Setting -->
     <string name="setting_vod">點播</string>
-    <string name="setting_live">直播</string>
     <string name="setting_wall">壁紙</string>
     <string name="setting_player">播放設定</string>
     <string name="setting_incognito">無痕模式</string>
@@ -109,6 +103,11 @@
     <string name="player_audio_decode">音訊軟解</string>
     <string name="player_aac">AAC優化</string>
     <string name="player_danmaku_load">彈幕載入</string>
+    <string name="player_anime4k">Anime4K 超解析度</string>
+    <string name="player_anime4k_strength">超分強度</string>
+    <string name="anime4k_strength_low">低</string>
+    <string name="anime4k_strength_medium">中</string>
+    <string name="anime4k_strength_high">高</string>
     <string name="player_tunnel">隧道模式</string>
     <string name="player_buffer">緩衝時間</string>
     <string name="player_speed">長按倍速</string>
@@ -144,8 +143,6 @@
     <string name="error_empty">這裡撒子內容都沒得～</string>
     <string name="error_cast_file">不支持的檔案格式</string>
     <string name="error_device_limit">設備授權數已達上限</string>
-    <string name="error_live_empty">該訂閱無直播內容</string>
-    <string name="error_no_live">當前源沒有直播內容</string>
 
     <!-- Update -->
     <string name="update_version">發現新版本 <xliff:g name="name">%s</xliff:g></string>
@@ -174,6 +171,12 @@
         <item>軟解</item>
         <item>硬解</item>
         <item>自動</item>
+    </string-array>
+
+    <string-array name="select_anime4k_strength">
+        <item>@string/anime4k_strength_low</item>
+        <item>@string/anime4k_strength_medium</item>
+        <item>@string/anime4k_strength_high</item>
     </string-array>
 
     <string-array name="select_quality">

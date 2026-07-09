@@ -52,6 +52,9 @@ public class SettingPlayerActivity extends BaseActivity implements UaCallback, B
         mBinding.audioDecodeSwitch.setChecked(Setting.isAudioPrefer());
         mBinding.aacSwitch.setChecked(Setting.isPreferAAC());
         mBinding.danmakuLoadSwitch.setChecked(Setting.isDanmakuLoad());
+        mBinding.anime4kSwitch.setChecked(Setting.isAnime4K());
+        mBinding.anime4kStrengthText.setText(getAnime4KStrengthText());
+        mBinding.anime4kStrength.setVisibility(Setting.isAnime4K() ? View.VISIBLE : View.GONE);
         mBinding.speedText.setText(format.format(Setting.getSpeed()));
         mBinding.bufferText.setText(String.valueOf(Setting.getBuffer()));
         mBinding.caption.setVisibility(Setting.hasCaption() ? View.VISIBLE : View.GONE);
@@ -78,6 +81,8 @@ public class SettingPlayerActivity extends BaseActivity implements UaCallback, B
         mBinding.audioDecodeSwitch.setOnClickListener(this::setAudioDecode);
         mBinding.aacSwitch.setOnClickListener(this::setAAC);
         mBinding.danmakuLoadSwitch.setOnClickListener(this::setDanmakuLoad);
+        mBinding.anime4kSwitch.setOnClickListener(this::setAnime4K);
+        mBinding.anime4kStrength.setOnClickListener(this::setAnime4KStrength);
     }
 
     private void onUa(View view) {
@@ -115,7 +120,7 @@ public class SettingPlayerActivity extends BaseActivity implements UaCallback, B
     }
 
     private void onBuffer(View view) {
-        BufferDialog.create(this).show();
+        BufferDialog.create(this).show(this);
     }
 
     @Override
@@ -167,4 +172,24 @@ public class SettingPlayerActivity extends BaseActivity implements UaCallback, B
         Setting.putDanmakuLoad(isChecked);
         // 不需要再次调用 setChecked，因为点击已经触发了状态变化
     }
-} 
+
+    private void setAnime4K(View view) {
+        boolean isChecked = !Setting.isAnime4K();
+        Setting.putAnime4K(isChecked);
+        mBinding.anime4kStrength.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+    }
+
+    private String getAnime4KStrengthText() {
+        int strength = Setting.getAnime4KStrength();
+        String[] arr = getResources().getStringArray(R.array.select_anime4k_strength);
+        return arr[strength];
+    }
+
+    private void setAnime4KStrength(View view) {
+        String[] arr = getResources().getStringArray(R.array.select_anime4k_strength);
+        int current = Setting.getAnime4KStrength();
+        int next = (current + 1) % arr.length;
+        Setting.putAnime4KStrength(next);
+        mBinding.anime4kStrengthText.setText(arr[next]);
+    }
+}

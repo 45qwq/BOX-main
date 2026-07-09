@@ -32,15 +32,7 @@ public class Product {
         // 总间距 = column * 40dp (每个item左右margin)
         int space = ResUtil.dp2px(column * 40);
         if (style.isOval()) space += ResUtil.dp2px(column * 40);
-        
-        android.util.Log.d("Product", "=== getSpec Debug ===");
-        android.util.Log.d("Product", "isLand: " + ResUtil.isLand(context));
-        android.util.Log.d("Product", "column: " + column);
-        android.util.Log.d("Product", "item margin per item: 40dp");
-        android.util.Log.d("Product", "total space (dp): " + (column * 40));
-        android.util.Log.d("Product", "total space (px): " + space);
-        android.util.Log.d("Product", "screenWidth (px): " + ResUtil.getScreenWidth(context));
-        
+
         return getSpec(context, space, column, style);
     }
 
@@ -52,13 +44,7 @@ public class Product {
         int base = ResUtil.getScreenWidth(context) - space;
         int width = base / column;
         int height = (int) (width / style.getRatio());
-        
-        android.util.Log.d("Product", "base (screenWidth - space): " + base);
-        android.util.Log.d("Product", "item width (px): " + width);
-        android.util.Log.d("Product", "item height (px): " + height);
-        android.util.Log.d("Product", "ratio: " + style.getRatio());
-        android.util.Log.d("Product", "==================");
-        
+
         return new int[]{width, height};
     }
 

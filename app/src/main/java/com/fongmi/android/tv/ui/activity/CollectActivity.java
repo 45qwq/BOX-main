@@ -23,6 +23,7 @@ import com.fongmi.android.tv.bean.Hot;
 import com.fongmi.android.tv.bean.Result;
 import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Suggest;
+import com.github.catvod.utils.Logger;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.ActivityCollectBinding;
 import com.fongmi.android.tv.impl.Callback;
@@ -40,6 +41,7 @@ import com.fongmi.android.tv.ui.custom.CustomTextListener;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
 import com.fongmi.android.tv.utils.PauseExecutor;
 import com.fongmi.android.tv.utils.ResUtil;
+import com.fongmi.android.tv.utils.ThreadPools;
 import com.fongmi.android.tv.utils.SearchResultOptimizer;
 import com.fongmi.android.tv.utils.Util;
 import com.github.catvod.net.OkHttp;
@@ -196,7 +198,7 @@ public class CollectActivity extends BaseActivity implements CustomScroller.Call
         mBinding.result.setVisibility(View.VISIBLE);
         updateEmptyState(); // 搜索开始时显示空状态
         if (mExecutor != null) mExecutor.shutdownNow();
-        mExecutor = new PauseExecutor(20);
+        mExecutor = ThreadPools.newPauseExecutor(20);
         String keyword = mBinding.keyword.getText().toString().trim();
         for (Site site : mSites) mExecutor.execute(() -> search(site, keyword));
         App.post(() -> mRecordAdapter.add(keyword), 250);
@@ -226,7 +228,8 @@ public class CollectActivity extends BaseActivity implements CustomScroller.Call
     private void search(Site site, String keyword) {
         try {
             mViewModel.searchContent(site, keyword, false);
-        } catch (Throwable ignored) {
+        } catch (Throwable e) {
+            Logger.w("CollectActivity search", e);
         }
     }
 
