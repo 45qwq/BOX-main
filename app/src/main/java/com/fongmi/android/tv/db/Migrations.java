@@ -45,4 +45,17 @@ public class Migrations {
             database.execSQL("DROP TABLE IF EXISTS Live");
         }
     };
+
+    public static final Migration MIGRATION_35_36 = new Migration(35, 36) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // Live 表已从实体中移除
+            database.execSQL("DROP TABLE IF EXISTS Live");
+            // Download 表新增字段
+            database.execSQL("ALTER TABLE Download ADD COLUMN statusInt INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE Download ADD COLUMN filePath TEXT");
+            database.execSQL("ALTER TABLE Download ADD COLUMN segmentInfo TEXT");
+            database.execSQL("ALTER TABLE Download ADD COLUMN errorMsg TEXT");
+        }
+    };
 }

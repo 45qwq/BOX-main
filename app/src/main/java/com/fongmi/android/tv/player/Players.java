@@ -21,7 +21,6 @@ import android.text.TextUtils;
 import androidx.annotation.NonNull;
 import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
-import androidx.media3.common.Effect;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.Tracks;
@@ -47,7 +46,6 @@ import com.fongmi.android.tv.event.PlayerEvent;
 import com.fongmi.android.tv.impl.ParseCallback;
 import com.fongmi.android.tv.impl.SessionCallback;
 import com.fongmi.android.tv.player.danmaku.DanPlayer;
-import com.fongmi.android.tv.player.effect.Anime4KEffect;
 import com.fongmi.android.tv.player.exo.ExoUtil;
 import com.fongmi.android.tv.utils.FileUtil;
 import com.fongmi.android.tv.utils.Notify;
@@ -100,7 +98,7 @@ public class Players implements Player.Listener, ParseCallback {
 
     private int decode;
     private int retry;
-    private boolean anime4KApplied;
+    private Anime4KController anime4KController;
 
     public static Players create(Activity activity) {
         Players player = new Players(activity);
@@ -152,10 +150,8 @@ public class Players implements Player.Listener, ParseCallback {
         exoPlayer.setAudioAttributes(AudioAttributes.DEFAULT, true);
         exoPlayer.setSeekParameters(SeekParameters.PREVIOUS_SYNC);
         // Anime4K 超分：初始化时根据已有分辨率信息决定是否应用
-        anime4KApplied = false;
-        if (Setting.isAnime4K() && shouldApplyAnime4K()) {
-            applyAnime4K();
-        }
+        anime4KController = new Anime4KController(exoPlayer);
+        anime4KController.init();
         exoPlayer.addAnalyticsListener(new EventLogger());
         exoPlayer.setHandleAudioBecomingNoisy(true);
         exoPlayer.setPlayWhenReady(true);
@@ -263,7 +259,7 @@ public class Players implements Player.Listener, ParseCallback {
     }
 
     public boolean retried() {
-        return ++retry > 2;
+        return ++retry > Constant.PLAYER_RETRY_MAX;
     }
 
     public boolean haveTrack(int type) {
@@ -292,11 +288,11 @@ public class Players implements Player.Listener, ParseCallback {
     }
 
     public boolean isLive() {
-        return getDuration() < TimeUnit.MINUTES.toMillis(1) || exoPlayer.isCurrentMediaItemLive();
+        return exoPlayer != null && (getDuration() < TimeUnit.MINUTES.toMillis(1) || exoPlayer.isCurrentMediaItemLive());
     }
 
     public boolean isVod() {
-        return getDuration() > TimeUnit.MINUTES.toMillis(1) && !exoPlayer.isCurrentMediaItemLive();
+        return exoPlayer != null && getDuration() > TimeUnit.MINUTES.toMillis(1) && !exoPlayer.isCurrentMediaItemLive();
     }
 
     public boolean isHard() {
@@ -332,19 +328,19 @@ public class Players implements Player.Listener, ParseCallback {
     public String addSpeed() {
         float speed = getSpeed();
         float addon = speed >= 2 ? 1f : 0.25f;
-        speed = speed >= 5 ? 0.25f : Math.min(speed + addon, 5.0f);
+        speed = speed >= Constant.PLAYER_SPEED_MAX ? Constant.PLAYER_SPEED_MIN : Math.min(speed + addon, Constant.PLAYER_SPEED_MAX);
         return setSpeed(speed);
     }
 
     public String addSpeed(float value) {
         float speed = getSpeed();
-        speed = Math.min(speed + value, 5);
+        speed = Math.min(speed + value, Constant.PLAYER_SPEED_MAX);
         return setSpeed(speed);
     }
 
     public String subSpeed(float value) {
         float speed = getSpeed();
-        speed = Math.max(speed - value, 0.25f);
+        speed = Math.max(speed - value, Constant.PLAYER_SPEED_MIN);
         return setSpeed(speed);
     }
 
@@ -656,41 +652,7 @@ public class Players implements Player.Listener, ParseCallback {
         this.size = videoSize;
         PlayerEvent.size(tag);
         // 分辨率变化后动态调整超分
-        updateAnime4K();
-    }
-
-    // 超分仅对 < 720p (宽 < 1280) 视频启用
-    private boolean shouldApplyAnime4K() {
-        if (size == null) return false;
-        return size.width > 0 && size.width < 1280;
-    }
-
-    private void applyAnime4K() {
-        if (exoPlayer == null) return;
-        List<Effect> effects = new ArrayList<>();
-        effects.add(new Anime4KEffect(Setting.getAnime4KStrength()));
-        exoPlayer.setVideoEffects(effects);
-        anime4KApplied = true;
-    }
-
-    private void removeAnime4K() {
-        if (exoPlayer == null) return;
-        exoPlayer.setVideoEffects(new ArrayList<>());
-        anime4KApplied = false;
-    }
-
-    // 根据当前分辨率动态应用/移除超分
-    private void updateAnime4K() {
-        if (!Setting.isAnime4K()) {
-            if (anime4KApplied) removeAnime4K();
-            return;
-        }
-        boolean should = shouldApplyAnime4K();
-        if (should && !anime4KApplied) {
-            applyAnime4K();
-        } else if (!should && anime4KApplied) {
-            removeAnime4K();
-        }
+        anime4KController.onVideoSizeChanged(videoSize);
     }
 
     @Override

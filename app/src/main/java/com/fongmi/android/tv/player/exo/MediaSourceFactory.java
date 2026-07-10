@@ -88,12 +88,18 @@ public class MediaSourceFactory implements MediaSource.Factory {
     }
 
     private DataSource.Factory getDataSourceFactory() {
-        if (dataSourceFactory == null) dataSourceFactory = buildReadOnlyCacheDataSource(new DefaultDataSource.Factory(App.get(), getHttpDataSourceFactory()));
+        if (dataSourceFactory == null) dataSourceFactory = buildCacheDataSource(new DefaultDataSource.Factory(App.get(), getHttpDataSourceFactory()));
         return dataSourceFactory;
     }
 
-    private CacheDataSource.Factory buildReadOnlyCacheDataSource(DataSource.Factory upstreamFactory) {
-        return new CacheDataSource.Factory().setCache(CacheManager.get().getCache()).setUpstreamDataSourceFactory(upstreamFactory).setCacheWriteDataSinkFactory(null).setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
+    /**
+     * 构建读写缓存 DataSink，启用缓存写入让 LRU 缓存真正生效
+     */
+    private CacheDataSource.Factory buildCacheDataSource(DataSource.Factory upstreamFactory) {
+        return new CacheDataSource.Factory()
+                .setCache(CacheManager.get().getCache())
+                .setUpstreamDataSourceFactory(upstreamFactory)
+                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
     }
 
     private HttpDataSource.Factory getHttpDataSourceFactory() {

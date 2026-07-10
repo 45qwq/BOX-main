@@ -40,6 +40,7 @@ public class PlayerController {
     private ParseAdapter mParseAdapter;
     private String tag;
     private boolean loop;
+    private Runnable mOnEpisodeSwitch;
 
     public PlayerController(Players players, ActivityVideoBinding binding, Runnable hideControlRunnable) {
         this.mPlayers = players;
@@ -307,12 +308,18 @@ public class PlayerController {
                 : androidx.media3.ui.R.drawable.exo_icon_play);
     }
 
+    public void setOnEpisodeSwitch(Runnable runnable) {
+        mOnEpisodeSwitch = runnable;
+    }
+
     public void onItemClick(Episode item) {
         // Delegate to flag adapter
         if (mFlagAdapter != null) mFlagAdapter.toggle(item);
         if (mEpisodeAdapter != null) {
             mEpisodeAdapter.notifyItemRangeChanged(0, mEpisodeAdapter.getItemCount());
         }
+        // 触发播放切换回调（上一集/下一集时启动播放）
+        if (mOnEpisodeSwitch != null) mOnEpisodeSwitch.run();
     }
 
     public interface EndHandler {

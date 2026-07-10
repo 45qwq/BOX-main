@@ -8,6 +8,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.URI
+import java.nio.channels.FileChannel
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -55,12 +56,7 @@ class FluxDownDownloader(
     private val executor = Executors.newFixedThreadPool(MAX_CONCURRENT)
     private val activeCalls = ConcurrentHashMap.newKeySet<Call>()
 
-    private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
-        .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
-        .writeTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
+    private val okHttpClient: OkHttpClient = DownloadHttpClient.get()
 
     private var totalSegments = 0
     private val downloadedCount = AtomicInteger(0)
@@ -505,6 +501,7 @@ class FluxDownDownloader(
 
     /**
      * 将所有临时 TS 片段按顺序合并为一个文件
+     * 使用 FileChannel.transferTo 零拷贝合并，大幅提升大文件合并速度
      */
     private fun mergeTSFiles(segmentCount: Int) {
         val outputFile = File(outputDir, outputFileName)
@@ -518,11 +515,12 @@ class FluxDownDownloader(
             outputFile.delete()
         }
 
-        val buffer = ByteArray(81920)  // 80KB 缓冲区
         var totalMerged = 0L
 
         try {
             FileOutputStream(outputFile).use { fos ->
+                val outChannel: FileChannel = fos.channel
+
                 for (i in 0 until segmentCount) {
                     if (cancelled) {
                         outputFile.delete()
@@ -536,15 +534,19 @@ class FluxDownDownloader(
                     }
 
                     FileInputStream(tempFile).use { fis ->
-                        var bytesRead: Int
-                        while (fis.read(buffer).also { bytesRead = it } != -1) {
-                            fos.write(buffer, 0, bytesRead)
-                            totalMerged += bytesRead
+                        val inChannel: FileChannel = fis.channel
+                        var transferred: Long
+                        var position: Long = 0L
+                        val size: Long = tempFile.length()
+                        while (position < size) {
+                            transferred = inChannel.transferTo(position, size - position, outChannel)
+                            if (transferred <= 0) break
+                            position += transferred
+                            totalMerged += transferred
                         }
                     }
-
-                    }
-                fos.flush()
+                }
+                outChannel.force(false)
             }
 
             if (cancelled) {

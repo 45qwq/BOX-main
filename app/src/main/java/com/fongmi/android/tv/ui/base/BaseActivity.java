@@ -44,7 +44,7 @@ public abstract class BaseActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+        setNightMode();
         super.onCreate(savedInstanceState);
         if (transparent()) setTransparent(this);
         setContentView(getBinding().getRoot());
@@ -84,6 +84,28 @@ public abstract class BaseActivity extends AppCompatActivity {
     }
 
     protected void onBackPress() {
+    }
+
+    /**
+     * 根据 Setting 配置应用暗色模式。
+     * 0 = 跟随系统 MODE_NIGHT_FOLLOW_SYSTEM
+     * 1 = 始终暗色 MODE_NIGHT_YES（默认）
+     * 2 = 始终亮色 MODE_NIGHT_NO
+     */
+    private void setNightMode() {
+        int mode = Setting.getDarkMode();
+        switch (mode) {
+            case 0:
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+                break;
+            case 2:
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+                break;
+            case 1:
+            default:
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+                break;
+        }
     }
 
     protected boolean isVisible(View view) {
@@ -179,14 +201,7 @@ public abstract class BaseActivity extends AppCompatActivity {
     private void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT < 33) return;
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return;
-        // 首次请求 or 拒绝后再次请求
-        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.POST_NOTIFICATIONS)) {
-            // 用户之前拒绝过，但仍可再次请求
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
-        } else {
-            // 首次请求（或永久拒绝后不再弹框，此处仅首次尝试）
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
-        }
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
     }
 
     @Override

@@ -15,6 +15,8 @@ import java.util.concurrent.TimeUnit
  */
 object ThreadPools {
 
+    private const val QUEUE_CAPACITY = 128
+
     private val CPU_CORES = Runtime.getRuntime().availableProcessors()
 
     /** IO 密集型线程池：网络请求、文件读写、数据库操作 */
@@ -31,7 +33,8 @@ object ThreadPools {
             Math.max(4, CPU_CORES * 2),
             Math.max(8, CPU_CORES * 4),
             60L, TimeUnit.SECONDS,
-            LinkedBlockingQueue()
+            LinkedBlockingQueue(QUEUE_CAPACITY),
+            ThreadPoolExecutor.CallerRunsPolicy()
         )
         IO.allowCoreThreadTimeOut(true)
 
@@ -39,7 +42,8 @@ object ThreadPools {
             Math.max(2, CPU_CORES),
             Math.max(2, CPU_CORES),
             60L, TimeUnit.SECONDS,
-            LinkedBlockingQueue()
+            LinkedBlockingQueue(QUEUE_CAPACITY),
+            ThreadPoolExecutor.CallerRunsPolicy()
         )
         COMPUTE.allowCoreThreadTimeOut(true)
 

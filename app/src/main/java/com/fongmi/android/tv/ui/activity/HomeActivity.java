@@ -9,11 +9,13 @@ import androidx.fragment.app.Fragment;
 import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.App;
+import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.Setting;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
 import com.fongmi.android.tv.databinding.ActivityHomeBinding;
 import com.fongmi.android.tv.db.AppDatabase;
+import com.fongmi.android.tv.db.BackupManager;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.event.ServerEvent;
 import com.fongmi.android.tv.event.StateEvent;
@@ -25,6 +27,7 @@ import com.fongmi.android.tv.ui.fragment.SettingFragment;
 import com.fongmi.android.tv.ui.fragment.VodFragment;
 import com.fongmi.android.tv.utils.Notify;
 import com.github.catvod.net.OkHttp;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -98,6 +101,7 @@ public class HomeActivity extends BaseActivity {
         // WallConfig/VodConfig 的 init() 方法内部会执行 Room 数据库查询 (Config.wall/vod())
         // 必须在后台线程执行，避免主线程数据库访问异常
         App.execute(() -> {
+            com.fongmi.android.tv.bean.DefaultConfig.initIfNeeded();
             WallConfig.get().init();
             VodConfig.get().init().load(getCallback());
         });
@@ -166,8 +170,22 @@ public class HomeActivity extends BaseActivity {
         if (mManager.isVisible(1)) {
             mManager.change(0);
         } else if (mManager.canBack(0)) {
-            finish();
+            showExitConfirm();
         }
+    }
+
+    /**
+     * 退出应用确认弹窗
+     */
+    private void showExitConfirm() {
+        if (isFinishing() || isDestroyed()) return;
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.exit_confirm_title)
+                .setMessage(R.string.exit_confirm_message)
+                .setPositiveButton(R.string.exit_confirm_ok, (d, w) -> finish())
+                .setNegativeButton(R.string.exit_confirm_cancel, null)
+                .setCancelable(true)
+                .show();
     }
 
     @Override
@@ -175,7 +193,7 @@ public class HomeActivity extends BaseActivity {
         WallConfig.get().clear();
         VodConfig.get().clear();
         OkHttp.get().clear();
-        AppDatabase.backup();
+        BackupManager.get().backup();
         Source.get().exit();
         super.onDestroy();
     }

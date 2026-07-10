@@ -37,6 +37,12 @@ public abstract class BaseFragment extends Fragment {
     protected void initData() {
     }
 
+    /**
+     * 触发懒加载初始化（只执行一次）。
+     * 由 onResume 触发，替代已废弃的 setUserVisibleHint。
+     * 若需要更精细的延迟加载控制，可在子类重写并通过
+     * FragmentTransaction.setMaxLifecycle 实现。
+     */
     private void onVisible() {
         if (init) return;
         initData();
@@ -48,14 +54,8 @@ public abstract class BaseFragment extends Fragment {
     }
 
     @Override
-    public void setUserVisibleHint(boolean isVisibleToUser) {
-        super.setUserVisibleHint(isVisibleToUser);
-        if (isVisibleToUser) if (isResumed()) onVisible();
-    }
-
-    @Override
     public void onResume() {
         super.onResume();
-        if (getUserVisibleHint()) onVisible();
+        onVisible();
     }
 }

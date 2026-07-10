@@ -16,12 +16,24 @@ import com.fongmi.android.tv.Setting
 import com.github.catvod.utils.Json
 import jahirfiquitiva.libs.textdrawable.TextDrawable
 import com.google.common.net.HttpHeaders
-import java.util.concurrent.ConcurrentHashMap
+
 
 object ImgUtil {
 
-    private val urlCache = ConcurrentHashMap<String, Any?>()
-    private const val URL_CACHE_MAX = 256
+    /**
+     * 基于内存大小的 LruCache，限制 8MB
+     * 超过限制时自动淘汰最近最少使用的条目
+     */
+    private val urlCache = object : androidx.collection.LruCache<String, Any>(8 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Any): Int {
+            // 估算缓存条目占用的内存大小
+            return when (value) {
+                is String -> value.length * 2  // char 占 2 字节
+                is com.bumptech.glide.load.model.GlideUrl -> 256  // 估算 GlideUrl 对象大小
+                else -> 512  // 默认估算大小
+            }
+        }
+    }
 
     private fun getSignature(url: String): ObjectKey {
         return ObjectKey(url + "_" + Setting.getQuality())
@@ -81,7 +93,7 @@ object ImgUtil {
         var param: String? = null
         var processedUrl = UrlUtil.convert(url)
         if (processedUrl.startsWith("data:")) {
-            urlCache[processedUrl] = processedUrl
+            urlCache.put(processedUrl, processedUrl)
             return processedUrl
         }
         val builder = LazyHeaders.Builder()
@@ -90,9 +102,9 @@ object ImgUtil {
         if (processedUrl.contains("@Referer=")) builder.addHeader(HttpHeaders.REFERER, processedUrl.split("@Referer=")[1].split("@")[0].also { param = it })
         if (processedUrl.contains("@User-Agent=")) builder.addHeader(HttpHeaders.USER_AGENT, processedUrl.split("@User-Agent=")[1].split("@")[0].also { param = it })
         processedUrl = if (param == null) processedUrl else processedUrl.split("@")[0]
-        val result: Any? = if (TextUtils.isEmpty(processedUrl)) null else GlideUrl(processedUrl, builder.build())
-        if (urlCache.size >= URL_CACHE_MAX) urlCache.clear()
-        urlCache[processedUrl] = result
+        if (TextUtils.isEmpty(processedUrl)) return null
+        val result: GlideUrl = GlideUrl(processedUrl, builder.build())
+        urlCache.put(processedUrl, result)
         return result
     }
 

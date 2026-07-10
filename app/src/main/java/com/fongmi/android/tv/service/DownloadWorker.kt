@@ -16,6 +16,7 @@ import com.fongmi.android.tv.bean.Download
 import com.fongmi.android.tv.event.RefreshEvent
 import com.fongmi.android.tv.utils.HttpDownloader
 import com.fongmi.android.tv.utils.FluxDownDownloader
+import com.fongmi.android.tv.utils.DownloadHttpClient
 import com.fongmi.android.tv.utils.Notify
 import com.github.catvod.utils.Path
 import kotlinx.coroutines.Dispatchers
@@ -393,11 +394,7 @@ class DownloadWorker(
         return isM3U8ByContentType(url)
     }
 
-    private val m3u8DetectClient = okhttp3.OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(5, TimeUnit.SECONDS)
-        .followRedirects(true)
-        .build()
+    private val m3u8DetectClient: okhttp3.OkHttpClient = DownloadHttpClient.head()
 
     private fun isM3U8ByContentType(url: String): Boolean {
         return try {

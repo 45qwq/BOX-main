@@ -3,7 +3,6 @@ package com.fongmi.android.tv.ui.dialog;
 import android.app.Activity;
 import android.view.LayoutInflater;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.fongmi.android.tv.api.config.VodConfig;
@@ -12,14 +11,14 @@ import com.fongmi.android.tv.databinding.DialogSiteBinding;
 import com.fongmi.android.tv.impl.SiteCallback;
 import com.fongmi.android.tv.ui.adapter.SiteAdapter;
 import com.fongmi.android.tv.ui.custom.SpaceItemDecoration;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 public class SiteDialog implements SiteAdapter.OnClickListener {
 
     private final SiteCallback callback;
     private DialogSiteBinding binding;
     private SiteAdapter adapter;
-    private AlertDialog dialog;
+    private BottomSheetDialog dialog;
 
     public static SiteDialog create(Activity activity) {
         return new SiteDialog(activity);
@@ -41,7 +40,7 @@ public class SiteDialog implements SiteAdapter.OnClickListener {
 
     private void init(Activity activity) {
         this.binding = DialogSiteBinding.inflate(LayoutInflater.from(activity));
-        this.dialog = new MaterialAlertDialogBuilder(activity).setView(binding.getRoot()).create();
+        this.dialog = new BottomSheetDialog(activity);
         this.adapter = new SiteAdapter(this);
     }
 
@@ -76,7 +75,8 @@ public class SiteDialog implements SiteAdapter.OnClickListener {
 
     private void setDialog() {
         if (adapter.getItemCount() == 0) return;
-        dialog.getWindow().setDimAmount(0);
+        dialog.setContentView(binding.getRoot());
+        dialog.setCanceledOnTouchOutside(true);
         dialog.show();
     }
 

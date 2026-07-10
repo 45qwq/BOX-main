@@ -27,10 +27,14 @@ class Notify private constructor() {
     private var mDialog: AlertDialog? = null
     private var mToast: Toast? = null
     private var mHandler: Handler? = null
+    // 缓存 Toast 的 TextView，避免每次 inflate
+    private var mToastView: TextView? = null
 
     companion object {
         const val DEFAULT = "default"
         const val ID = 9527
+        // Toast 显示时长（毫秒）
+        private const val TOAST_DURATION = 2500L
 
         private val instance: Notify by lazy { Notify() }
 
@@ -69,7 +73,7 @@ class Notify private constructor() {
 
         @JvmStatic
         fun show(text: String?) {
-            get().makeText(text)
+            get().makeText(text, false)
         }
 
         @JvmStatic
@@ -79,7 +83,7 @@ class Notify private constructor() {
 
         @JvmStatic
         fun showCenter(text: String?) {
-            get().makeTextCenter(text)
+            get().makeText(text, true)
         }
 
         @JvmStatic
@@ -106,42 +110,30 @@ class Notify private constructor() {
         }
     }
 
-    private fun makeText(message: String?) {
-        if (TextUtils.isEmpty(message)) return
-        if (mHandler == null) mHandler = Handler(Looper.getMainLooper())
-        mHandler!!.post {
-            mToast?.cancel()
-            mToast = Toast(App.get()).apply {
-                val view = LayoutInflater.from(App.get()).inflate(R.layout.view_toast, null) as TextView
-                view.text = message
-                setView(view)
-                duration = Toast.LENGTH_SHORT
-                show()
-            }
-            mHandler!!.removeCallbacksAndMessages(null)
-            mHandler!!.postDelayed({
-                mToast?.cancel()
-            }, 1000)
+    private fun getToastView(): TextView {
+        if (mToastView == null) {
+            mToastView = LayoutInflater.from(App.get()).inflate(R.layout.view_toast, null) as TextView
         }
+        return mToastView!!
     }
 
-    private fun makeTextCenter(message: String?) {
+    private fun makeText(message: String?, center: Boolean) {
         if (TextUtils.isEmpty(message)) return
         if (mHandler == null) mHandler = Handler(Looper.getMainLooper())
         mHandler!!.post {
             mToast?.cancel()
             mToast = Toast(App.get()).apply {
-                val view = LayoutInflater.from(App.get()).inflate(R.layout.view_toast, null) as TextView
+                val view = getToastView()
                 view.text = message
                 setView(view)
                 duration = Toast.LENGTH_SHORT
-                setGravity(Gravity.CENTER, 0, 0)
+                if (center) setGravity(Gravity.CENTER, 0, 0)
                 show()
             }
             mHandler!!.removeCallbacksAndMessages(null)
             mHandler!!.postDelayed({
                 mToast?.cancel()
-            }, 1000)
+            }, TOAST_DURATION)
         }
     }
 }

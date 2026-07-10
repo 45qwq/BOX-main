@@ -1,18 +1,26 @@
 package com.fongmi.android.tv;
 
-
 import android.content.Intent;
-import android.net.Uri;
-import android.provider.DocumentsContract;
 import android.provider.Settings;
 
-import com.fongmi.android.tv.player.Players;
-import com.github.catvod.utils.Logger;
-
-import java.io.File;
+import com.fongmi.android.tv.setting.DownloadSetting;
+import com.fongmi.android.tv.setting.PlayerSetting;
+import com.fongmi.android.tv.setting.SyncSetting;
 import com.github.catvod.utils.Prefers;
 
+/**
+ * 全局配置入口（向后兼容）
+ *
+ * 内部委托给分类配置类：
+ * - PlayerSetting: 播放器、弹幕、字幕、超分
+ * - SyncSetting: WebDAV/局域网同步
+ * - DownloadSetting: 下载路径、并发数
+ *
+ * 新代码建议直接使用分类类
+ */
 public class Setting {
+
+    // ==================== 网络/全局配置 ====================
 
     public static String getDoh() {
         return Prefers.getString("doh");
@@ -55,11 +63,19 @@ public class Setting {
     }
 
     public static int getWall() {
-        return Prefers.getInt("wall", 6);
+        return Prefers.getInt("wall", Constant.DEFAULT_WALL);
     }
 
     public static void putWall(int wall) {
         Prefers.put("wall", wall);
+    }
+
+    public static int getDarkMode() {
+        return Prefers.getInt("dark_mode", 1);
+    }
+
+    public static void putDarkMode(int mode) {
+        Prefers.put("dark_mode", mode);
     }
 
     public static int getReset() {
@@ -70,84 +86,12 @@ public class Setting {
         Prefers.put("reset", reset);
     }
 
-    public static int getDecode() {
-        return Prefers.getInt("decode", Players.AUTO);
-    }
-
-    public static void putDecode(int decode) {
-        Prefers.put("decode", decode);
-    }
-
-    public static int getRender() {
-        return Prefers.getInt("render", 0);
-    }
-
-    public static void putRender(int render) {
-        Prefers.put("render", render);
-    }
-
-    public static int getQuality() {
-        return Prefers.getInt("quality", 2);
-    }
-
-    public static void putQuality(int quality) {
-        Prefers.put("quality", quality);
-    }
-
-    public static int getSize() {
-        return Prefers.getInt("size", 2);
-    }
-
-    public static void putSize(int size) {
-        Prefers.put("size", size);
-    }
-
-    public static int getViewType(int viewType) {
-        return Prefers.getInt("viewType", viewType);
-    }
-
-    public static void putViewType(int viewType) {
-        Prefers.put("viewType", viewType);
-    }
-
-    public static int getScale() {
-        return Prefers.getInt("scale");
-    }
-
-    public static void putScale(int scale) {
-        Prefers.put("scale", scale);
-    }
-
-    public static int getBuffer() {
-        return Math.min(Math.max(Prefers.getInt("buffer"), 1), 10);
-    }
-
-    public static void putBuffer(int buffer) {
-        Prefers.put("buffer", buffer);
-    }
-
-    public static int getBackground() {
-        return Prefers.getInt("background", 0);
-    }
-
-    public static void putBackground(int background) {
-        Prefers.put("background", background);
-    }
-
     public static int getSiteMode() {
         return Prefers.getInt("site_mode");
     }
 
     public static void putSiteMode(int mode) {
         Prefers.put("site_mode", mode);
-    }
-
-    public static int getSyncMode() {
-        return Prefers.getInt("sync_mode");
-    }
-
-    public static void putSyncMode(int mode) {
-        Prefers.put("sync_mode", mode);
     }
 
     public static boolean isIncognito() {
@@ -206,114 +150,6 @@ public class Setting {
         Prefers.put("use_cn_mirror", useCnMirror);
     }
 
-    public static boolean isCaption() {
-        return Prefers.getBoolean("caption");
-    }
-
-    public static void putCaption(boolean caption) {
-        Prefers.put("caption", caption);
-    }
-
-    public static boolean isTunnel() {
-        return Prefers.getBoolean("tunnel");
-    }
-
-    public static void putTunnel(boolean tunnel) {
-        Prefers.put("tunnel", tunnel);
-    }
-
-    public static boolean isAudioPrefer() {
-        return Prefers.getBoolean("audio_prefer");
-    }
-
-    public static void putAudioPrefer(boolean audioPrefer) {
-        Prefers.put("audio_prefer", audioPrefer);
-    }
-
-    public static boolean isPreferAAC() {
-        return Prefers.getBoolean("prefer_aac");
-    }
-
-    public static void putPreferAAC(boolean preferAAC) {
-        Prefers.put("prefer_aac", preferAAC);
-    }
-
-    public static boolean isDanmakuLoad() {
-        return Prefers.getBoolean("danmaku_load");
-    }
-
-    public static void putDanmakuLoad(boolean danmakuLoad) {
-        Prefers.put("danmaku_load", danmakuLoad);
-    }
-
-    public static float getDanmakuSize() {
-        return Prefers.getFloat("danmaku_size", 1.0f);
-    }
-
-    public static void putDanmakuSize(float size) {
-        Prefers.put("danmaku_size", size);
-    }
-
-    public static boolean isDanmakuShow() {
-        return Prefers.getBoolean("danmaku_show");
-    }
-
-    public static void putDanmakuShow(boolean danmakuShow) {
-        Prefers.put("danmaku_show", danmakuShow);
-    }
-
-    public static boolean isZhuyin() {
-        return Prefers.getBoolean("zhuyin");
-    }
-
-    public static void putZhuyin(boolean zhuyin) {
-        Prefers.put("zhuyin", zhuyin);
-    }
-
-    public static float getSpeed() {
-        return Math.min(Math.max(Prefers.getFloat("speed", 3), 2), 5);
-    }
-
-    public static void putSpeed(float speed) {
-        Prefers.put("speed", speed);
-    }
-
-    public static float getSubtitleTextSize() {
-        return Prefers.getFloat("subtitle_text_size");
-    }
-
-    public static void putSubtitleTextSize(float value) {
-        Prefers.put("subtitle_text_size", value);
-    }
-
-    public static float getSubtitlePosition() {
-        return Prefers.getFloat("subtitle_position");
-    }
-
-    public static void putSubtitlePosition(float value) {
-        Prefers.put("subtitle_position", value);
-    }
-
-    public static float getThumbnail() {
-        return 0.3f * getQuality() + 0.4f;
-    }
-
-    public static boolean isBackgroundOff() {
-        return getBackground() == 0;
-    }
-
-    public static boolean isBackgroundOn() {
-        return getBackground() == 1 || getBackground() == 2;
-    }
-
-    public static boolean isBackgroundPiP() {
-        return getBackground() == 2;
-    }
-
-    public static boolean hasCaption() {
-        return new Intent(Settings.ACTION_CAPTIONING_SETTINGS).resolveActivity(App.get().getPackageManager()) != null;
-    }
-
     public static boolean isPrivacyAgreed() {
         return Prefers.getBoolean("privacy_agreed_v1", false);
     }
@@ -322,33 +158,6 @@ public class Setting {
         Prefers.put("privacy_agreed_v1", agreed);
     }
 
-    // 局域网自动同步配置
-    public static boolean isAutoSync() {
-        return Prefers.getBoolean("auto_sync", false);
-    }
-
-    public static void putAutoSync(boolean autoSync) {
-        Prefers.put("auto_sync", autoSync);
-    }
-
-    public static int getSyncInterval() {
-        return Prefers.getInt("sync_interval", 30); // 默认30分钟
-    }
-
-    public static void putSyncInterval(int minutes) {
-        Prefers.put("sync_interval", minutes);
-    }
-
-    // TV版同步服务器开关
-    public static boolean isSyncEnabled() {
-        return Prefers.getBoolean("sync_enabled", false);
-    }
-
-    public static void putSyncEnabled(boolean enabled) {
-        Prefers.put("sync_enabled", enabled);
-    }
-
-    // 首页历史记录可见性（已移除设置项，保留默认关闭）
     public static boolean isHistoryVisible() {
         return false;
     }
@@ -357,144 +166,98 @@ public class Setting {
         Prefers.put("history_visible", visible);
     }
 
-    // AI广告拦截功能
     public static boolean isAIAdBlockEnabled() {
-        return Prefers.getBoolean("ai_ad_block", true); // 默认开启
+        return Prefers.getBoolean("ai_ad_block", true);
     }
 
     public static void putAIAdBlockEnabled(boolean enabled) {
         Prefers.put("ai_ad_block", enabled);
     }
 
-    // Anime4K 视频超分
-    public static boolean isAnime4K() {
-        return Prefers.getBoolean("anime4k", false); // 默认关闭
+    public static boolean hasCaption() {
+        return new Intent(Settings.ACTION_CAPTIONING_SETTINGS).resolveActivity(App.get().getPackageManager()) != null;
     }
 
-    public static void putAnime4K(boolean enabled) {
-        Prefers.put("anime4k", enabled);
-    }
+    // ==================== 播放器配置（委托 PlayerSetting）====================
 
-    // Anime4K 强度: 0=低 1=中 2=高
-    public static int getAnime4KStrength() {
-        return Prefers.getInt("anime4k_strength", 1); // 默认中
-    }
+    public static int getDecode() { return PlayerSetting.getDecode(); }
+    public static void putDecode(int decode) { PlayerSetting.putDecode(decode); }
+    public static int getRender() { return PlayerSetting.getRender(); }
+    public static void putRender(int render) { PlayerSetting.putRender(render); }
+    public static int getQuality() { return PlayerSetting.getQuality(); }
+    public static void putQuality(int quality) { PlayerSetting.putQuality(quality); }
+    public static int getSize() { return PlayerSetting.getSize(); }
+    public static void putSize(int size) { PlayerSetting.putSize(size); }
+    public static int getViewType(int viewType) { return PlayerSetting.getViewType(viewType); }
+    public static void putViewType(int viewType) { PlayerSetting.putViewType(viewType); }
+    public static int getScale() { return PlayerSetting.getScale(); }
+    public static void putScale(int scale) { PlayerSetting.putScale(scale); }
+    public static int getBuffer() { return PlayerSetting.getBuffer(); }
+    public static void putBuffer(int buffer) { PlayerSetting.putBuffer(buffer); }
+    public static int getBackground() { return PlayerSetting.getBackground(); }
+    public static void putBackground(int background) { PlayerSetting.putBackground(background); }
+    public static boolean isBackgroundOff() { return PlayerSetting.isBackgroundOff(); }
+    public static boolean isBackgroundOn() { return PlayerSetting.isBackgroundOn(); }
+    public static boolean isBackgroundPiP() { return PlayerSetting.isBackgroundPiP(); }
+    public static boolean isCaption() { return PlayerSetting.isCaption(); }
+    public static void putCaption(boolean caption) { PlayerSetting.putCaption(caption); }
+    public static boolean isTunnel() { return PlayerSetting.isTunnel(); }
+    public static void putTunnel(boolean tunnel) { PlayerSetting.putTunnel(tunnel); }
+    public static boolean isAudioPrefer() { return PlayerSetting.isAudioPrefer(); }
+    public static void putAudioPrefer(boolean audioPrefer) { PlayerSetting.putAudioPrefer(audioPrefer); }
+    public static boolean isPreferAAC() { return PlayerSetting.isPreferAAC(); }
+    public static void putPreferAAC(boolean preferAAC) { PlayerSetting.putPreferAAC(preferAAC); }
+    public static boolean isDanmakuLoad() { return PlayerSetting.isDanmakuLoad(); }
+    public static void putDanmakuLoad(boolean danmakuLoad) { PlayerSetting.putDanmakuLoad(danmakuLoad); }
+    public static float getDanmakuSize() { return PlayerSetting.getDanmakuSize(); }
+    public static void putDanmakuSize(float size) { PlayerSetting.putDanmakuSize(size); }
+    public static boolean isDanmakuShow() { return PlayerSetting.isDanmakuShow(); }
+    public static void putDanmakuShow(boolean danmakuShow) { PlayerSetting.putDanmakuShow(danmakuShow); }
+    public static boolean isZhuyin() { return PlayerSetting.isZhuyin(); }
+    public static void putZhuyin(boolean zhuyin) { PlayerSetting.putZhuyin(zhuyin); }
+    public static float getSpeed() { return PlayerSetting.getSpeed(); }
+    public static void putSpeed(float speed) { PlayerSetting.putSpeed(speed); }
+    public static float getSubtitleTextSize() { return PlayerSetting.getSubtitleTextSize(); }
+    public static void putSubtitleTextSize(float value) { PlayerSetting.putSubtitleTextSize(value); }
+    public static float getSubtitlePosition() { return PlayerSetting.getSubtitlePosition(); }
+    public static void putSubtitlePosition(float value) { PlayerSetting.putSubtitlePosition(value); }
+    public static float getThumbnail() { return PlayerSetting.getThumbnail(); }
+    public static boolean isAnime4K() { return PlayerSetting.isAnime4K(); }
+    public static void putAnime4K(boolean enabled) { PlayerSetting.putAnime4K(enabled); }
+    public static int getAnime4KStrength() { return PlayerSetting.getAnime4KStrength(); }
+    public static void putAnime4KStrength(int strength) { PlayerSetting.putAnime4KStrength(strength); }
 
-    public static void putAnime4KStrength(int strength) {
-        Prefers.put("anime4k_strength", strength);
-    }
+    // ==================== 同步配置（委托 SyncSetting）====================
 
-    // WebDAV同步配置
-    public static String getWebDAVUrl() {
-        return Prefers.getString("webdav_url", "");
-    }
+    public static int getSyncMode() { return SyncSetting.getSyncMode(); }
+    public static void putSyncMode(int mode) { SyncSetting.putSyncMode(mode); }
+    public static boolean isAutoSync() { return SyncSetting.isAutoSync(); }
+    public static void putAutoSync(boolean autoSync) { SyncSetting.putAutoSync(autoSync); }
+    public static int getSyncInterval() { return SyncSetting.getSyncInterval(); }
+    public static void putSyncInterval(int minutes) { SyncSetting.putSyncInterval(minutes); }
+    public static boolean isSyncEnabled() { return SyncSetting.isSyncEnabled(); }
+    public static void putSyncEnabled(boolean enabled) { SyncSetting.putSyncEnabled(enabled); }
+    public static String getWebDAVUrl() { return SyncSetting.getWebDAVUrl(); }
+    public static void putWebDAVUrl(String url) { SyncSetting.putWebDAVUrl(url); }
+    public static String getWebDAVUsername() { return SyncSetting.getWebDAVUsername(); }
+    public static void putWebDAVUsername(String username) { SyncSetting.putWebDAVUsername(username); }
+    public static String getWebDAVPassword() { return SyncSetting.getWebDAVPassword(); }
+    public static void putWebDAVPassword(String password) { SyncSetting.putWebDAVPassword(password); }
+    public static String getWebDAVSyncMode() { return SyncSetting.getWebDAVSyncMode(); }
+    public static void putWebDAVSyncMode(String mode) { SyncSetting.putWebDAVSyncMode(mode); }
+    public static String getWebDAVSyncCode() { return SyncSetting.getWebDAVSyncCode(); }
+    public static void putWebDAVSyncCode(String code) { SyncSetting.putWebDAVSyncCode(code); }
+    public static String getWebDAVPublicUrl() { return SyncSetting.getWebDAVPublicUrl(); }
+    public static void putWebDAVPublicUrl(String url) { SyncSetting.putWebDAVPublicUrl(url); }
+    public static boolean isWebDAVAutoSync() { return SyncSetting.isWebDAVAutoSync(); }
+    public static void putWebDAVAutoSync(boolean autoSync) { SyncSetting.putWebDAVAutoSync(autoSync); }
+    public static int getWebDAVSyncInterval() { return SyncSetting.getWebDAVSyncInterval(); }
+    public static void putWebDAVSyncInterval(int minutes) { SyncSetting.putWebDAVSyncInterval(minutes); }
 
-    public static void putWebDAVUrl(String url) {
-        Prefers.put("webdav_url", url);
-    }
+    // ==================== 下载配置（委托 DownloadSetting）====================
 
-    public static String getWebDAVUsername() {
-        return Prefers.getString("webdav_username", "");
-    }
-
-    public static void putWebDAVUsername(String username) {
-        Prefers.put("webdav_username", username);
-    }
-
-    public static String getWebDAVPassword() {
-        return Prefers.getString("webdav_password", "");
-    }
-
-    public static void putWebDAVPassword(String password) {
-        Prefers.put("webdav_password", password);
-    }
-
-    public static String getWebDAVSyncMode() {
-        return Prefers.getString("webdav_sync_mode", "ACCOUNT"); // 默认账号模式
-    }
-
-    public static void putWebDAVSyncMode(String mode) {
-        Prefers.put("webdav_sync_mode", mode);
-    }
-
-    public static String getWebDAVSyncCode() {
-        return Prefers.getString("webdav_sync_code", "");
-    }
-
-    public static void putWebDAVSyncCode(String code) {
-        Prefers.put("webdav_sync_code", code);
-    }
-
-    public static String getWebDAVPublicUrl() {
-        return Prefers.getString("webdav_public_url", "");
-    }
-
-    public static void putWebDAVPublicUrl(String url) {
-        Prefers.put("webdav_public_url", url);
-    }
-
-    public static boolean isWebDAVAutoSync() {
-        return Prefers.getBoolean("webdav_auto_sync", false);
-    }
-
-    public static void putWebDAVAutoSync(boolean autoSync) {
-        Prefers.put("webdav_auto_sync", autoSync);
-    }
-
-    public static int getWebDAVSyncInterval() {
-        return Prefers.getInt("webdav_sync_interval", 60); // 默认60分钟
-    }
-
-    public static void putWebDAVSyncInterval(int minutes) {
-        Prefers.put("webdav_sync_interval", minutes);
-    }
-
-    // 下载保存路径（空表示使用默认路径 Download/mxbox/movie）
-    public static String getDownloadPath() {
-        String path = Prefers.getString("download_path", "");
-        if (path == null || path.isEmpty()) return path;
-        if (!path.startsWith("content://")) return path;
-        return resolveContentUri(path);
-    }
-
-    // 将 SAF 返回的 content:// URI 转换为真实文件路径
-    private static String resolveContentUri(String contentUri) {
-        try {
-            Uri uri = Uri.parse(contentUri);
-            String docId = DocumentsContract.getTreeDocumentId(uri);
-            // docId 格式: "51A-625D:down/subdir" 或 "primary:Download"
-            int colon = docId.indexOf(':');
-            if (colon < 0) return "";
-            String volumeId = docId.substring(0, colon);
-            String relativePath = docId.substring(colon + 1);
-            // 常见挂载点
-            String[] mounts = {
-                "/storage/" + volumeId,
-                "/storage/emulated/" + ("primary".equals(volumeId) ? "0" : volumeId),
-                "/mnt/media_rw/" + volumeId,
-                "/mnt/" + volumeId
-            };
-            for (String mount : mounts) {
-                File f = new File(mount, relativePath);
-                if (f.exists() && f.canWrite()) return f.getAbsolutePath();
-                if (f.exists()) return f.getAbsolutePath();
-            }
-        } catch (Exception e) {
-            Logger.w("Setting getMountPath", e);
-        }
-        return "";
-    }
-
-    public static void putDownloadPath(String path) {
-        Prefers.put("download_path", path);
-    }
-
-    // 同时下载数量（默认3，最大5，最小1）
-    public static int getDownloadConcurrent() {
-        return Math.min(Math.max(Prefers.getInt("download_concurrent", 3), 1), 5);
-    }
-
-    public static void putDownloadConcurrent(int count) {
-        Prefers.put("download_concurrent", Math.min(Math.max(count, 1), 5));
-    }
+    public static String getDownloadPath() { return DownloadSetting.getDownloadPath(); }
+    public static void putDownloadPath(String path) { DownloadSetting.putDownloadPath(path); }
+    public static int getDownloadConcurrent() { return DownloadSetting.getDownloadConcurrent(); }
+    public static void putDownloadConcurrent(int count) { DownloadSetting.putDownloadConcurrent(count); }
 }

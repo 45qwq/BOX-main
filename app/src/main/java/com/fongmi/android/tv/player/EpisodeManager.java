@@ -128,8 +128,10 @@ public class EpisodeManager {
     public void setDetail(Vod item, String pic, String name, String siteName) {
         mActorExpanded = false;
         mBinding.downloadRow.setVisibility(item == null || item.getVodFlags().isEmpty() ? View.GONE : View.VISIBLE);
-        mBinding.video.setTag(item.getVodPic(pic));
-        mBinding.name.setText(item.getVodName(name));
+        item.ensureVodPic(pic);
+        item.ensureVodName(name);
+        mBinding.video.setTag(item.getVodPic());
+        mBinding.name.setText(item.getVodName());
         setText(mBinding.remark, 0, item.getVodRemarks());
         setText(mBinding.site, R.string.detail_site, siteName);
         setText(mBinding.content, 0, Html.fromHtml(item.getVodContent()).toString());

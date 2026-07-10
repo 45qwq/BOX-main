@@ -368,6 +368,12 @@ public abstract class BaseVideoActivity extends BaseActivity implements Clock.Ca
         mPiP = new PiP();
         // 初始化控制器组件
         mPlayerController = new PlayerController(mPlayers, mBinding, mR1);
+        // 上一集/下一集按钮切换后触发播放刷新
+        mPlayerController.setOnEpisodeSwitch(() -> {
+            if (mFlagAdapter != null && mEpisodeAdapter != null && !mFlagAdapter.isEmpty() && !mEpisodeAdapter.isEmpty()) {
+                onRefresh();
+            }
+        });
         mGestureController = new GestureController(mPlayerController, mBinding, mAudioManager, mR1);
         mControlPanel = new ControlPanelManager(mBinding, mPlayerController, this, mR1, mR3, mPiP);
         mEpisodeMgr = new EpisodeManager(mBinding);
@@ -430,6 +436,8 @@ public abstract class BaseVideoActivity extends BaseActivity implements Clock.Ca
         mBinding.video.setOnTouchListener((view, event) -> mKeyDown.onTouchEvent(event));
         mBinding.control.action.getRoot().setOnTouchListener(this::onActionTouch);
         mBinding.swipeLayout.setOnRefreshListener(this::onSwipeRefresh);
+        // 增大下拉触发距离，避免滚动时误触刷新
+        mBinding.swipeLayout.setDistanceToTriggerSync(400);
         mBinding.control.seek.setListener(mPlayers);
     }
 
@@ -736,8 +744,10 @@ public abstract class BaseVideoActivity extends BaseActivity implements Clock.Ca
         mCurrentVod = item;
         mBinding.downloadRow.setVisibility(item == null || item.getVodFlags().isEmpty() ? View.GONE : View.VISIBLE);
         mBinding.progressLayout.showContent();
-        mBinding.video.setTag(item.getVodPic(getPic()));
-        mBinding.name.setText(item.getVodName(getName()));
+        item.ensureVodPic(getPic());
+        item.ensureVodName(getName());
+        mBinding.video.setTag(item.getVodPic());
+        mBinding.name.setText(item.getVodName());
         setText(mBinding.remark, 0, item.getVodRemarks());
         setText(mBinding.site, R.string.detail_site, getSite().getName());
         setText(mBinding.content, 0, Html.fromHtml(item.getVodContent()).toString());
@@ -747,7 +757,7 @@ public abstract class BaseVideoActivity extends BaseActivity implements Clock.Ca
         mFlagAdapter.addAll(item.getVodFlags());
         setOther(mBinding.other, item);
         setArtwork(item.getVodPic());
-        setPoster(item.getVodPic(getPic()));
+        setPoster(item.getVodPic());
         App.removeCallbacks(mR4);
         checkHistory(item);
         checkKeepImg();

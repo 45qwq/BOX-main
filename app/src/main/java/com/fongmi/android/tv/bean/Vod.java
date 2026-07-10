@@ -275,6 +275,16 @@ public class Vod implements Parcelable {
         return getVodName();
     }
 
+    /** 确保有封面：若当前为空则使用传入值填充 */
+    public void ensureVodPic(String pic) {
+        if (getVodPic().isEmpty()) setVodPic(pic);
+    }
+
+    /** 确保有名称：若当前为空则使用传入值填充 */
+    public void ensureVodName(String name) {
+        if (getVodName().isEmpty()) setVodName(name);
+    }
+
     public void trans() {
         if (Trans.pass()) return;
         this.vodName = Trans.s2t(vodName);
