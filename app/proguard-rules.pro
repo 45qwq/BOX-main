@@ -28,14 +28,9 @@
 -keep class com.github.catvod.crawler.** { *; }
 -keep class * extends com.github.catvod.crawler.Spider
 
-# Cling
+# Smbj（SMB 库依赖的 javax.el 和 org.ietf.jgss 在 Android 上不存在，需 dontwarn）
 -dontwarn javax.**
--dontwarn sun.net.**
--dontwarn java.awt.**
--dontwarn com.sun.net.**
 -dontwarn org.ietf.jgss.**
--keep class org.fourthline.cling.** { *; }
--keep class javax.xml.** { *; }
 
 # Cronet
 -keep class org.chromium.net.** { *; }
@@ -48,6 +43,15 @@
 -dontwarn org.slf4j.impl.StaticLoggerBinder
 -keep class org.xmlpull.** { *; }
 -keepclassmembers class org.xmlpull.** { *; }
+
+# jupnp / cling（Android 平台不存在 com.sun.net.httpserver / java.awt / java.lang.management / org.dbunit）
+-dontwarn com.sun.net.httpserver.**
+-dontwarn java.awt.**
+-dontwarn java.awt.image.**
+-dontwarn java.lang.management.**
+-dontwarn org.dbunit.**
+-dontwarn org.seamless.**
+-dontwarn org.fourthline.cling.transport.impl.**
 
 # Jianpian
 -keep class com.p2p.** { *; }
@@ -88,3 +92,9 @@
 
 # Zxing
 -keep class com.google.zxing.** { *; }
+
+# Cling (UPnP/DLNA)
+-keep class org.fourthline.cling.** { *; }
+-keep class org.seamless.** { *; }
+-dontwarn javax.servlet.**
+-dontwarn org.eclipse.jetty.**

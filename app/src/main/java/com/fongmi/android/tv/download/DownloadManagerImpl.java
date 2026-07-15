@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.download;
 
+import android.content.Context;
 import com.github.catvod.utils.Logger;
 
 import com.fongmi.android.tv.App;
@@ -24,21 +25,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import com.fongmi.android.tv.download.DownloadStateMachine.Status;
+import com.fongmi.android.tv.download.DownloadStateMachine.ErrorType;
 
 /**
  * 下载管理器实现
  * 统一管理下载队列、并发控制、任务状态机和重试策略
- *
- * 职责：
- * - 下载任务生命周期管理（排队/开始/暂停/恢复/取消/重试）
- * - 并发下载数限制（1-5，默认3）
- * - 任务状态机转换校验
- * - 失败自动重试（可配置次数，指数退避）
- * - 监听器分发
  */
 public class DownloadManagerImpl {
 
-    // 默认配置
     private static final int DEFAULT_MAX_CONCURRENT = 3;
     private static final int DEFAULT_MAX_RETRIES = 3;
     private static final int MIN_CONCURRENT = 1;
@@ -46,30 +41,15 @@ public class DownloadManagerImpl {
 
     private static volatile DownloadManagerImpl instance;
 
-    // 线程池
     private ExecutorService executor;
     private int maxConcurrent;
     private int maxRetries;
 
-    // 任务管理
     private final Map<String, DownloadTask> activeTasks = new ConcurrentHashMap<>();
     private final Queue<String> pendingQueue = new ConcurrentLinkedQueue<>();
     private final AtomicInteger activeTaskCount = new AtomicInteger(0);
 
-    // 监听器
     private final List<DownloadListener> listeners = new ArrayList<>();
-
-    // 回调
-    private DownloadServiceCallback serviceCallback;
-
-    /**
-     * 下载服务回调接口
-     * 供 DownloadService 等宿主使用（通知管理、前台服务生命周期等）
-     */
-    public interface DownloadServiceCallback {
-        void updateNotification(String title, int progress);
-        void onAllTasksCompleted();
-    }
 
     public static DownloadManagerImpl get() {
         if (instance == null) {
@@ -82,25 +62,11 @@ public class DownloadManagerImpl {
         return instance;
     }
 
-    /**
-     * 重置单例（用于测试或Service重启场景）
-     */
-    public static synchronized void reset() {
-        if (instance != null) {
-            instance.shutdown();
-            instance = null;
-        }
-    }
-
     private DownloadManagerImpl() {
         this.maxConcurrent = clampConcurrent(Setting.getDownloadConcurrent());
         this.maxRetries = DEFAULT_MAX_RETRIES;
         this.executor = Executors.newFixedThreadPool(this.maxConcurrent);
         Logger.i("DownloadManagerImpl: 初始化，并发数: " + this.maxConcurrent + "，最大重试: " + this.maxRetries);
-    }
-
-    public void setServiceCallback(DownloadServiceCallback callback) {
-        this.serviceCallback = callback;
     }
 
     // ==================== 监听器管理 ====================
@@ -185,7 +151,7 @@ public class DownloadManagerImpl {
     private void enqueueDownload(Download download) {
         String oldStatus = download.getStatus();
         pendingQueue.add(download.getId());
-        download.setStatus(DownloadStateMachine.STATUS_QUEUED);
+        download.setStatus(Status.QUEUED.name());
         // 数据库操作必须在后台线程执行
         App.execute(() -> {
             try {
@@ -195,7 +161,7 @@ public class DownloadManagerImpl {
             }
             App.post(() -> {
                 Logger.i("DownloadManagerImpl: 排队中: " + download.getVodName() + " (活跃: " + activeTaskCount.get() + "/" + maxConcurrent + ")");
-                notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_QUEUED);
+                notifyStatusChanged(download, oldStatus, Status.QUEUED.name());
                 RefreshEvent.download();
                 notifyQueued(download);
             });
@@ -220,7 +186,7 @@ public class DownloadManagerImpl {
         Logger.i("DownloadManagerImpl: 开始下载: " + download.getVodName() + " (活跃: " + activeTaskCount.get() + "/" + maxConcurrent + ")");
 
         String oldStatus = download.getStatus();
-        download.setStatus(DownloadStateMachine.STATUS_DOWNLOADING);
+        download.setStatus(Status.DOWNLOADING.name());
         // 数据库操作必须在后台线程执行
         App.execute(() -> {
             try {
@@ -237,18 +203,18 @@ public class DownloadManagerImpl {
                 Logger.e("DownloadManagerImpl: 线程池已关闭，无法执行下载任务: " + download.getVodName(), e);
                 activeTasks.remove(download.getId());
                 activeTaskCount.decrementAndGet();
-                download.setStatus(DownloadStateMachine.STATUS_FAILED);
+                download.setStatus(Status.FAILED.name());
                 download.setErrorMsg("下载服务已停止");
                 saveDownload(download);
                 App.post(() -> {
-                    notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_FAILED);
+                    notifyStatusChanged(download, oldStatus, Status.FAILED.name());
                     notifyFailed(download, "下载服务已停止");
                     RefreshEvent.download();
                 });
                 return;
             }
             App.post(() -> {
-                notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_DOWNLOADING);
+                notifyStatusChanged(download, oldStatus, Status.DOWNLOADING.name());
                 RefreshEvent.download();
             });
         });
@@ -266,9 +232,9 @@ public class DownloadManagerImpl {
             Download download = Download.find(downloadId);
             if (download != null) {
                 String oldStatus = download.getStatus();
-                download.setStatus(DownloadStateMachine.STATUS_CANCELLED);
+                download.setStatus(Status.CANCELLED.name());
                 download.save();
-                notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_CANCELLED);
+                notifyStatusChanged(download, oldStatus, Status.CANCELLED.name());
                 RefreshEvent.download();
             }
             return;
@@ -312,9 +278,9 @@ public class DownloadManagerImpl {
         Download download = Download.find(downloadId);
         if (download != null) {
             String oldStatus = download.getStatus();
-            download.setStatus(DownloadStateMachine.STATUS_PAUSED);
+            download.setStatus(Status.PAUSED.name());
             download.save();
-            notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_PAUSED);
+            notifyStatusChanged(download, oldStatus, Status.PAUSED.name());
             RefreshEvent.download();
         }
 
@@ -329,10 +295,10 @@ public class DownloadManagerImpl {
         if (download == null) return;
 
         String oldStatus = download.getStatus();
-        download.setStatus(DownloadStateMachine.STATUS_PENDING);
+        download.setStatus(Status.PENDING.name());
         download.setProgress(0);
         download.save();
-        notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_PENDING);
+        notifyStatusChanged(download, oldStatus, Status.PENDING.name());
         RefreshEvent.download();
 
         startDownload(download);
@@ -352,12 +318,12 @@ public class DownloadManagerImpl {
         if (oldFile.exists()) oldFile.delete();
 
         String oldStatus = download.getStatus();
-        download.setStatus(DownloadStateMachine.STATUS_PENDING);
+        download.setStatus(Status.PENDING.name());
         download.setProgress(0);
         download.setSpeed(0);
         download.setSegmentInfo(null);
         download.save();
-        notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_PENDING);
+        notifyStatusChanged(download, oldStatus, Status.PENDING.name());
         RefreshEvent.download();
 
         startDownload(download);
@@ -391,7 +357,7 @@ public class DownloadManagerImpl {
 
         // 检查状态：只有 queued 或 pending 状态的任务才能开始下载
         String status = download.getStatus();
-        if (!DownloadStateMachine.STATUS_QUEUED.equals(status) && !DownloadStateMachine.STATUS_PENDING.equals(status)) {
+        if (!Status.QUEUED.name().equals(status) && !Status.PENDING.name().equals(status)) {
             Logger.w("DownloadManagerImpl: 队列任务状态非排队/等待，跳过: " + nextId + " status=" + status);
             processNextInQueue();
             return;
@@ -406,9 +372,6 @@ public class DownloadManagerImpl {
     private void checkAllTasksCompleted() {
         if (activeTaskCount.get() == 0) {
             Logger.i("DownloadManagerImpl: 所有下载任务已完成");
-            if (serviceCallback != null) {
-                serviceCallback.onAllTasksCompleted();
-            }
         }
     }
 
@@ -593,10 +556,10 @@ public class DownloadManagerImpl {
                             if (progress >= 0) download.setProgress(progress);
                             download.setSpeed(actualSpeed);
                             String oldStatus = download.getStatus();
-                            download.setStatus(DownloadStateMachine.STATUS_DOWNLOADING);
+                            download.setStatus(Status.DOWNLOADING.name());
                             saveDownload(download);
                             notifyProgress(download, progress >= 0 ? progress : 0, actualSpeed);
-                            notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_DOWNLOADING);
+                            notifyStatusChanged(download, oldStatus, Status.DOWNLOADING.name());
 
                             String info = download.getVodName() + " - " + formatSpeed(actualSpeed) + "/s";
                             if (progress >= 0) info += " " + progress + "%";
@@ -646,9 +609,9 @@ public class DownloadManagerImpl {
                         public void onStart() {
                             updateNotification(download.getVodName() + " - 开始下载", 0);
                             String oldStatus = download.getStatus();
-                            download.setStatus(DownloadStateMachine.STATUS_DOWNLOADING);
+                            download.setStatus(Status.DOWNLOADING.name());
                             saveDownload(download);
-                            notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_DOWNLOADING);
+                            notifyStatusChanged(download, oldStatus, Status.DOWNLOADING.name());
                             RefreshEvent.download();
                         }
 
@@ -664,10 +627,10 @@ public class DownloadManagerImpl {
                             download.setSpeed(actualSpeed);
                             download.setSegmentInfo(downloadedSegments + "/" + totalSegments);
                             String oldStatus = download.getStatus();
-                            download.setStatus(DownloadStateMachine.STATUS_DOWNLOADING);
+                            download.setStatus(Status.DOWNLOADING.name());
                             saveDownload(download);
                             notifyProgress(download, progress, actualSpeed);
-                            notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_DOWNLOADING);
+                            notifyStatusChanged(download, oldStatus, Status.DOWNLOADING.name());
                             updateNotification(download.getVodName() + " " + formatSpeed(actualSpeed) + "/s", progress);
                             if (isThrottledRefresh()) RefreshEvent.download();
                         }
@@ -675,9 +638,9 @@ public class DownloadManagerImpl {
                         @Override
                         public void onMerging() {
                             String oldStatus = download.getStatus();
-                            download.setStatus(DownloadStateMachine.STATUS_MERGING);
+                            download.setStatus(Status.MERGING.name());
                             saveDownload(download);
-                            notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_MERGING);
+                            notifyStatusChanged(download, oldStatus, Status.MERGING.name());
                             updateNotification(download.getVodName() + " - 视频合并中", download.getProgress());
                             RefreshEvent.download();
 
@@ -685,7 +648,7 @@ public class DownloadManagerImpl {
                             App.post(() -> {
                                 App.execute(() -> {
                                     Download current = Download.find(download.getId());
-                                    if (current != null && DownloadStateMachine.STATUS_MERGING.equals(current.getStatus())) {
+                                    if (current != null && Status.MERGING.name().equals(current.getStatus())) {
                                         App.post(() -> RefreshEvent.download());
                                     }
                                 });
@@ -727,9 +690,9 @@ public class DownloadManagerImpl {
             download.setFilePath(file.getAbsolutePath());
             download.setProgress(100);
             String oldStatus = download.getStatus();
-            download.setStatus(DownloadStateMachine.STATUS_COMPLETED);
+            download.setStatus(Status.COMPLETED.name());
             saveDownload(download);
-            notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_COMPLETED);
+            notifyStatusChanged(download, oldStatus, Status.COMPLETED.name());
             notifyCompleted(download);
             updateNotification(download.getVodName() + " - 下载完成", 100);
             RefreshEvent.download();
@@ -748,10 +711,10 @@ public class DownloadManagerImpl {
                 outputFile.delete();
             }
             String oldStatus = download.getStatus();
-            download.setStatus(DownloadStateMachine.STATUS_FAILED);
+            download.setStatus(Status.FAILED.name());
             download.setErrorMsg(error);
             saveDownload(download);
-            notifyStatusChanged(download, oldStatus, DownloadStateMachine.STATUS_FAILED);
+            notifyStatusChanged(download, oldStatus, Status.FAILED.name());
             notifyFailed(download, error);
             Notify.show("下载失败: " + error);
             RefreshEvent.download();
@@ -793,9 +756,6 @@ public class DownloadManagerImpl {
         }
 
         private void updateNotification(String title, int progress) {
-            if (serviceCallback != null) {
-                serviceCallback.updateNotification(title, progress);
-            }
         }
     }
 

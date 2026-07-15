@@ -13,6 +13,7 @@ import com.bumptech.glide.Glide;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.Setting;
+import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.api.config.WallConfig;
 import com.fongmi.android.tv.databinding.DialogWallBinding;
 import com.fongmi.android.tv.utils.FileUtil;
@@ -98,7 +99,9 @@ public class WallDialog {
     private void pickLocalImage() {
         Intent intent = new Intent(Intent.ACTION_PICK);
         intent.setType("image/*");
-        fragment.startActivityForResult(intent, REQUEST_PICK_WALLPAPER);
+        if (fragment instanceof BaseFragment) {
+            ((BaseFragment) fragment).getPickLauncher().launch(intent);
+        }
         dialog.dismiss();
     }
 
@@ -114,14 +117,12 @@ public class WallDialog {
     }
 
     /**
-     * 在 Fragment.onActivityResult 中调用此方法处理图库返回结果
-     * 用法：WallDialog.handleActivityResult(requestCode, resultCode, data, fragment.getActivity())
+     * 在 Fragment.onPickFile 中调用此方法处理图库返回结果
+     * 用法：WallDialog.handleResult(uri, fragment.getActivity())
      */
-    public static void handleActivityResult(int requestCode, int resultCode, Intent data, Activity activity) {
-        if (requestCode != REQUEST_PICK_WALLPAPER) return;
-        if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) return;
+    public static void handleResult(Uri uri, Activity activity) {
+        if (uri == null) return;
 
-        Uri uri = data.getData();
         Notify.progress(activity);
         App.execute(() -> applyLocalWallpaper(uri, activity));
     }

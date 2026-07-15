@@ -14,6 +14,7 @@ import com.fongmi.android.tv.App
 import com.fongmi.android.tv.R
 import com.fongmi.android.tv.bean.Download
 import com.fongmi.android.tv.event.RefreshEvent
+import com.fongmi.android.tv.download.DownloadStateMachine
 import com.fongmi.android.tv.utils.HttpDownloader
 import com.fongmi.android.tv.utils.FluxDownDownloader
 import com.fongmi.android.tv.utils.DownloadHttpClient
@@ -125,9 +126,9 @@ class DownloadWorker(
                 if (isStopped) {
                     Result.failure()
                 } else {
-                    val status = download.status ?: "pending"
+                    val status = download.status ?: DownloadStateMachine.Status.PENDING.name
                     when (status) {
-                        "completed" -> Result.success()
+                        DownloadStateMachine.Status.COMPLETED.name -> Result.success()
                         else -> {
                             if (runAttemptCount < MAX_RETRIES) {
                                 Logger.i("DownloadWorker: Worker 重试: ${runAttemptCount + 1}/$MAX_RETRIES")
@@ -141,7 +142,7 @@ class DownloadWorker(
             } catch (e: Exception) {
                 if (!isStopped) {
                     Logger.e("DownloadWorker: 下载异常", e)
-                    updateDownloadStatus(download, "failed")
+                    updateDownloadStatus(download, DownloadStateMachine.Status.FAILED)
                     Notify.show("下载失败: ${e.message ?: "未知错误"}")
                 }
                 if (runAttemptCount < MAX_RETRIES) {
@@ -170,7 +171,7 @@ class DownloadWorker(
             outputFile.name,
             object : FluxDownDownloader.Callback {
                 override fun onStart() {
-                    updateDownloadStatus(download, "downloading")
+                    updateDownloadStatus(download, DownloadStateMachine.Status.DOWNLOADING)
                 }
 
                 override fun onProgress(
@@ -194,12 +195,12 @@ class DownloadWorker(
                 }
 
                 override fun onMerging() {
-                    updateDownloadStatus(download, "merging")
+                    updateDownloadStatus(download, DownloadStateMachine.Status.MERGING)
                 }
 
                 override fun onSuccess(file: File) {
                     if (!file.exists() || file.length() == 0L) {
-                        updateDownloadStatus(download, "failed")
+                        updateDownloadStatus(download, DownloadStateMachine.Status.FAILED)
                         Notify.show("下载失败: 合并后的文件不存在或为空")
                         latch.countDown()
                         return
@@ -207,7 +208,7 @@ class DownloadWorker(
                     download.filePath = file.absolutePath
                     download.progress = 100
                     App.execute {
-                        download.status = "completed"
+                        download.status = DownloadStateMachine.Status.COMPLETED.name
                         download.save()
                     }
                     notificationManager.notify(
@@ -221,7 +222,7 @@ class DownloadWorker(
 
                 override fun onError(error: String) {
                     Logger.e("DownloadWorker: M3U8 下载失败: $error")
-                    updateDownloadStatus(download, "failed")
+                    updateDownloadStatus(download, DownloadStateMachine.Status.FAILED)
                     Notify.show("下载失败: $error")
                     latch.countDown()
                 }
@@ -243,7 +244,7 @@ class DownloadWorker(
             headers,
             object : HttpDownloader.Callback {
                 override fun onStart(totalSize: Long) {
-                    updateDownloadStatus(download, "downloading")
+                    updateDownloadStatus(download, DownloadStateMachine.Status.DOWNLOADING)
                 }
 
                 override fun onProgress(
@@ -262,7 +263,7 @@ class DownloadWorker(
                     }
                     if (progress >= 0) download.progress = progress
                     download.speed = actualSpeed
-                    download.status = "downloading"
+                    download.status = DownloadStateMachine.Status.DOWNLOADING.name
                     App.execute { download.save() }
                     notificationManager.notify(
                         NOTIFICATION_ID,
@@ -276,7 +277,7 @@ class DownloadWorker(
 
                 override fun onSuccess(file: File?) {
                     if (file == null || !file.exists() || file.length() == 0L) {
-                        updateDownloadStatus(download, "failed")
+                        updateDownloadStatus(download, DownloadStateMachine.Status.FAILED)
                         Notify.show("下载失败: 文件不存在或为空")
                         latch.countDown()
                         return
@@ -284,7 +285,7 @@ class DownloadWorker(
                     download.filePath = file.absolutePath
                     download.progress = 100
                     App.execute {
-                        download.status = "completed"
+                        download.status = DownloadStateMachine.Status.COMPLETED.name
                         download.save()
                     }
                     notificationManager.notify(
@@ -298,7 +299,7 @@ class DownloadWorker(
 
                 override fun onError(error: String?) {
                     Logger.e("DownloadWorker: 直链下载失败: $error")
-                    updateDownloadStatus(download, "failed")
+                    updateDownloadStatus(download, DownloadStateMachine.Status.FAILED)
                     Notify.show("下载失败: $error")
                     latch.countDown()
                 }
@@ -306,17 +307,17 @@ class DownloadWorker(
         )
     }
 
-    private fun updateDownloadStatus(download: Download, status: String) {
-        download.status = status
+    private fun updateDownloadStatus(download: Download, status: DownloadStateMachine.Status) {
+        download.status = status.name
         App.execute { download.save() }
         notificationManager.notify(
             NOTIFICATION_ID,
             buildNotification(
                 when (status) {
-                    "downloading" -> "${download.vodName} - 下载中"
-                    "merging" -> "${download.vodName} - 合并中"
-                    "completed" -> "${download.vodName} - 下载完成"
-                    "failed" -> "${download.vodName} - 下载失败"
+                    DownloadStateMachine.Status.DOWNLOADING -> "${download.vodName} - 下载中"
+                    DownloadStateMachine.Status.MERGING -> "${download.vodName} - 合并中"
+                    DownloadStateMachine.Status.COMPLETED -> "${download.vodName} - 下载完成"
+                    DownloadStateMachine.Status.FAILED -> "${download.vodName} - 下载失败"
                     else -> "${download.vodName}"
                 },
                 download.progress

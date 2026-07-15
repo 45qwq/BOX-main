@@ -2,6 +2,7 @@ package com.fongmi.android.tv.ui.dialog;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -95,7 +96,7 @@ public final class TrackDialog extends BaseDialog implements TrackAdapter.OnClic
     }
 
     private void showChooser(View view) {
-        FileChooser.from(this).show(new String[]{MimeTypes.APPLICATION_SUBRIP, MimeTypes.TEXT_SSA, MimeTypes.TEXT_VTT, MimeTypes.APPLICATION_TTML, "audio/*", "text/*", "application/octet-stream"});
+        FileChooser.from(this).launch(getPickLauncher(), "*/*", new String[]{MimeTypes.APPLICATION_SUBRIP, MimeTypes.TEXT_SSA, MimeTypes.TEXT_VTT, MimeTypes.APPLICATION_TTML, "audio/*", "text/*", "application/octet-stream"});
         player.pause();
     }
 
@@ -129,10 +130,9 @@ public final class TrackDialog extends BaseDialog implements TrackAdapter.OnClic
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode != Activity.RESULT_OK || requestCode != FileChooser.REQUEST_PICK_FILE) return;
-        player.setSub(Sub.from(FileChooser.getPathFromUri(data.getData())));
+    protected void onPickFile(@Nullable Uri uri) {
+        if (uri == null) return;
+        player.setSub(Sub.from(FileChooser.getPathFromUri(uri)));
         dismiss();
     }
 

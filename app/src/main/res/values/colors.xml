@@ -1,41 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <color name="primary">#29B6F6</color>
+    <color name="primaryDark">#0288D1</color>
+    <color name="accent">#29B6F6</color>
+    <color name="indicator">@color/white_80</color>
+    <color name="yellow_50">#4D29B6F6</color>
+    <color name="yellow_500">#29B6F6</color>
+    <color name="yellow_bg">#3329B6F6</color>
     <color name="transparent">#00000000</color>
-    <color name="black">#000000</color>
-    <color name="black_05">#0D000000</color>
-    <color name="black_10">#1A000000</color>
-    <color name="black_15">#26000000</color>
-    <color name="black_20">#33000000</color>
-    <color name="black_30">#4D000000</color>
-    <color name="black_40">#66000000</color>
-    <color name="black_50">#80000000</color>
-    <color name="black_60">#99000000</color>
-    <color name="black_70">#B3000000</color>
-    <color name="black_80">#CC000000</color>
-    <color name="black_90">#E6000000</color>
     <color name="white">#FFFFFF</color>
-    <color name="white_05">#0DFFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="white_90">#E6FFFFFF</color>
+    <color name="white_80">#CCFFFFFF</color>
+    <color name="white_70">#B3FFFFFF</color>
+    <color name="white_60">#99FFFFFF</color>
+    <color name="white_50">#80FFFFFF</color>
+    <color name="white_40">#66FFFFFF</color>
+    <color name="white_30">#4DFFFFFF</color>
+    <color name="white_20">#33FFFFFF</color>
     <color name="white_15">#26FFFFFF</color>
     <color name="white_10">#1AFFFFFF</color>
-    <color name="white_20">#33FFFFFF</color>
-    <color name="white_30">#4DFFFFFF</color>
-    <color name="white_40">#66FFFFFF</color>
-    <color name="white_50">#80FFFFFF</color>
-    <color name="white_60">#99FFFFFF</color>
-    <color name="white_70">#B3FFFFFF</color>
-    <color name="white_80">#CCFFFFFF</color>
-    <color name="white_90">#E6FFFFFF</color>
-    <color name="text_toast">#FFEB3B</color>
-    <color name="yellow_500">#FFEB3B</color>
-    <color name="yellow_bg">#33FFEB3B</color>
-    <color name="sync_button_bg">#334CAF50</color>
-    
-    <!-- Launcher icon background (Light mode) -->
-    <color name="launcher_background">#FFFFFF</color>
-    <color name="divider">#33FFFFFF</color>
-    <color name="dialog_bg">#F01E1E1E</color>
-    <color name="primary_button">#FF1976D2</color>
-    <color name="episode_text">#FFFFFF</color>
+    <color name="white_05">#0DFFFFFF</color>
+    <color name="black_90">#E6000000</color>
+    <color name="black_80">#CC000000</color>
+    <color name="black_70">#B3000000</color>
+    <color name="black_60">#99000000</color>
+    <color name="black_50">#80000000</color>
+    <color name="black_40">#66000000</color>
+    <color name="black_30">#4D000000</color>
+    <color name="black_20">#33000000</color>
+    <color name="black_15">#26000000</color>
+    <color name="black_10">#1A000000</color>
+    <color name="black_05">#0D000000</color>
     <color name="grey_500">#9E9E9E</color>
+    <color name="dialog_bg">#F01E1E1E</color>
+    <color name="divider">#33FFFFFF</color>
+    <color name="launcher_background">#FFFFFF</color>
+    <color name="primary_button">#29B6F6</color>
+    <color name="primary_button_dark">#0288D1</color>
 
 </resources>

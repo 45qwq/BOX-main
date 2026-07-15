@@ -12,9 +12,13 @@ import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
+import androidx.activity.result.ActivityResultLauncher
 import androidx.fragment.app.Fragment
 import com.fongmi.android.tv.App
 import com.fongmi.android.tv.ui.activity.FileActivity
+import com.fongmi.android.tv.ui.base.BaseActivity
+import com.fongmi.android.tv.ui.base.BaseFragment
+import com.fongmi.android.tv.ui.dialog.BaseDialog
 import com.github.catvod.utils.Path
 import java.io.File
 
@@ -34,20 +38,55 @@ class FileChooser private constructor(private val activity: Activity? = null, pr
 
     @Suppress("deprecation")
     fun show(mimeType: String, mimeTypes: Array<String>, code: Int) {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+        launch(buildIntent(mimeType, mimeTypes), code)
+    }
+
+    /** 用宿主的 ActivityResultLauncher 启动文件选择（默认任意类型），结果由宿主 onPickFile 接收。 */
+    @Suppress("deprecation")
+    fun launch(launcher: ActivityResultLauncher<Intent>) {
+        launch(launcher, "*/*", arrayOf("*/*"))
+    }
+
+    /** 用宿主的 ActivityResultLauncher 启动文件选择，结果由宿主 onPickFile 接收。 */
+    @Suppress("deprecation")
+    fun launch(launcher: ActivityResultLauncher<Intent>, mimeType: String = "*/*", mimeTypes: Array<String> = arrayOf("*/*")) {
+        launch(buildIntent(mimeType, mimeTypes), REQUEST_PICK_FILE)
+    }
+
+    @Suppress("deprecation")
+    private fun launch(intent: Intent, code: Int) {
+        val launcher = when {
+            activity is BaseActivity -> activity.getPickLauncher() as ActivityResultLauncher<Intent>
+            fragment is BaseFragment -> fragment.getPickLauncher() as ActivityResultLauncher<Intent>
+            fragment is BaseDialog -> fragment.getPickLauncher() as ActivityResultLauncher<Intent>
+            else -> null
+        }
+        if (launcher != null) {
+            launcher.launch(intent)
+        } else {
+            // 兜底：理论不会走到（调用方均为 Base 子类），保留旧行为以防万一
+            if (resolveStub(intent)) {
+                activity?.startActivityForResult(Intent(activity, FileActivity::class.java), code)
+                fragment?.startActivityForResult(Intent(fragment.activity, FileActivity::class.java), code)
+            } else {
+                activity?.startActivityForResult(Intent.createChooser(intent, ""), code)
+                fragment?.startActivityForResult(Intent.createChooser(intent, ""), code)
+            }
+        }
+    }
+
+    private fun resolveStub(intent: Intent): Boolean {
+        val resolveInfos = App.get().packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        return resolveInfos.isEmpty() || resolveInfos[0].activityInfo.packageName.contains("frameworkpackagestubs")
+    }
+
+    private fun buildIntent(mimeType: String, mimeTypes: Array<String>): Intent {
+        return Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             setType(mimeType)
             addCategory(Intent.CATEGORY_OPENABLE)
             putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
             putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
             putExtra("android.content.extra.SHOW_ADVANCED", true)
-        }
-        val resolveInfos = App.get().packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
-        if (resolveInfos.isEmpty() || resolveInfos[0].activityInfo.packageName.contains("frameworkpackagestubs")) {
-            activity?.startActivityForResult(Intent(activity, FileActivity::class.java), code)
-            fragment?.startActivityForResult(Intent(fragment.activity, FileActivity::class.java), code)
-        } else {
-            activity?.startActivityForResult(Intent.createChooser(intent, ""), code)
-            fragment?.startActivityForResult(Intent.createChooser(intent, ""), code)
         }
     }
 

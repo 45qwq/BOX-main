@@ -7,7 +7,7 @@ import android.net.Uri;
 
 import com.forcetech.service.P2PService;
 import com.forcetech.service.P3PService;
-import com.gsoft.mitv.MainActivity;
+import com.gsoft.mitv.MitvService;
 
 public class Util {
 
@@ -25,7 +25,7 @@ public class Util {
         String name = o.getClassName();
         name = name.substring(name.lastIndexOf(".") + 1);
         name = name.replace("Service", "");
-        name = name.replace("MainActivity", "mitv");
+        name = name.replace("MitvService", "mitv");
         return name.toLowerCase();
     }
 
@@ -42,7 +42,7 @@ public class Util {
             case "p3p":
                 return P3PService.class;
             default:
-                return MainActivity.class;
+                return MitvService.class;
         }
     }
 

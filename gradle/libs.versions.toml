@@ -1,6 +1,7 @@
 [versions]
 agp = "8.12.0"
 kotlin = "2.0.21"
+coroutines = "1.9.0"
 compose-compiler = "2.0.21"
 compose-bom = "2025.04.00"
 hilt = "2.54"
@@ -19,6 +20,7 @@ room = "2.8.0"
 preference = "1.2.1"
 biometric = "1.1.0"
 swiperefreshlayout = "1.1.0"
+viewpager2 = "1.1.0"
 work = "2.11.2"
 flexbox = "3.0.0"
 
@@ -41,7 +43,6 @@ custom-crash = "2.4.0"
 textdrawable = "1.0.3"
 sardine = "0.9"
 smbj = "0.13.0"
-cling = "2.1.1"
 simple-xml = "2.7.1"
 zxing-embedded = "4.3.0"
 guava = "33.3.1-android"
@@ -56,10 +57,13 @@ cronet-embedded = "76.3809.111"
 rtmp-client = "3.1.0"
 avif = "1.1.1.14d8e3c4"
 md-colors = "1.0.0"
+cling = "2.1.1"
 
 [libraries]
 # Kotlin
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 
 # AndroidX Core
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
@@ -69,6 +73,7 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 androidx-preference = { module = "androidx.preference:preference", version.ref = "preference" }
 androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 androidx-swiperefreshlayout = { module = "androidx.swiperefreshlayout:swiperefreshlayout", version.ref = "swiperefreshlayout" }
+androidx-viewpager2 = { module = "androidx.viewpager2:viewpager2", version.ref = "viewpager2" }
 androidx-flexbox = { module = "com.google.android.flexbox:flexbox", version.ref = "flexbox" }
 
 # Lifecycle
@@ -149,8 +154,6 @@ custom-crash = { module = "cat.ereza:customactivityoncrash", version.ref = "cust
 textdrawable = { module = "com.github.jahirfiquitiva:TextDrawable", version.ref = "textdrawable" }
 sardine = { module = "com.github.thegrizzlylabs:sardine-android", version.ref = "sardine" }
 smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }
-cling-core = { module = "org.fourthline.cling:cling-core", version.ref = "cling" }
-cling-support = { module = "org.fourthline.cling:cling-support", version.ref = "cling" }
 simple-xml = { module = "org.simpleframework:simple-xml", version.ref = "simple-xml" }
 zxing-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxing-embedded" }
 guava-android = { module = "com.google.guava:guava", version.ref = "guava" }
@@ -165,6 +168,7 @@ rtmp-client = { module = "io.antmedia:rtmp-client", version.ref = "rtmp-client" 
 avif-android = { module = "org.aomedia.avif.android:avif", version.ref = "avif" }
 md-colors = { module = "com.github.bassaer:materialdesigncolors", version.ref = "md-colors" }
 desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs_nio", version.ref = "desugar" }
+cling-core = { module = "org.fourthline.cling:cling-core", version.ref = "cling" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

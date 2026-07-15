@@ -120,7 +120,7 @@ public class SiteViewModel extends ViewModel {
                 SpiderDebug.log(detailContent);
                 Result result = Result.fromJson(detailContent);
                 if (!result.getList().isEmpty()) result.getList().get(0).setVodFlags();
-                if (!result.getList().isEmpty()) Source.get().parse(result.getList().get(0).getVodFlags());
+                if (!result.getList().isEmpty()) Source.parseBlocking(result.getList().get(0).getVodFlags());
                 return result;
             } else if (site.isEmpty() && "push_agent".equals(key)) {
                 Vod vod = new Vod();
@@ -128,7 +128,7 @@ public class SiteViewModel extends ViewModel {
                 vod.setVodName(id);
                 vod.setVodPic(ResUtil.getString(R.string.push_image));
                 vod.setVodFlags(Flag.create(ResUtil.getString(R.string.push), id));
-                Source.get().parse(vod.getVodFlags());
+                Source.parseBlocking(vod.getVodFlags());
                 return Result.vod(vod);
             } else {
                 ArrayMap<String, String> params = new ArrayMap<>();
@@ -138,7 +138,7 @@ public class SiteViewModel extends ViewModel {
                 SpiderDebug.log(detailContent);
                 Result result = Result.fromType(site.getType(), detailContent);
                 if (!result.getList().isEmpty()) result.getList().get(0).setVodFlags();
-                if (!result.getList().isEmpty()) Source.get().parse(result.getList().get(0).getVodFlags());
+                if (!result.getList().isEmpty()) Source.parseBlocking(result.getList().get(0).getVodFlags());
                 return result;
             }
         });

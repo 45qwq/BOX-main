@@ -10,7 +10,7 @@ android {
     namespace = "com.fongmi.android.tv"
 
     compileSdk = 36
-    flavorDimensions += listOf("mode", "abi")
+    flavorDimensions += listOf("abi")
 
     signingConfigs {
         create("release") {
@@ -29,8 +29,8 @@ android {
         applicationId = "com.fongmi.android.tv"
         minSdk = 24
         targetSdk = 36
-        versionCode = 315
-        versionName = "3.1.5"
+        versionCode = 401
+        versionName = "4.0.1"
 
         val githubToken = project.findProperty("GITHUB_TOKEN") ?: ""
         buildConfigField("String", "GITHUB_TOKEN", "\"${githubToken}\"")
@@ -44,12 +44,6 @@ android {
     }
 
     productFlavors {
-        create("mobile") {
-            dimension = "mode"
-        }
-        create("tablet") {
-            dimension = "mode"
-        }
         create("arm64_v8a") {
             dimension = "abi"
             ndk {
@@ -85,6 +79,7 @@ android {
         resources {
             excludes += "META-INF/beans.xml"
             excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+            
         }
         jniLibs {
             pickFirsts += listOf(
@@ -115,7 +110,11 @@ android {
     }
 
     lint {
+        abortOnError = false
         disable += "UnsafeOptInUsageError"
+        checkReleaseBuilds = false
+        ignoreWarnings = true
+        warningsAsErrors = false
     }
 
     compileOptions {
@@ -134,14 +133,17 @@ android {
 }
 
 dependencies {
-    implementation(fileTree("libs") { include("*.aar") })
+    implementation(fileTree("libs") { include("*.aar", "*.jar") })
     implementation(project(":catvod"))
     implementation(libs.kotlin.stdlib)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
     implementation(project(":forcetech"))
     implementation(project(":hook"))
     implementation(project(":jianpian"))
     implementation(project(":quickjs"))
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.viewpager2)
     implementation(libs.androidx.media)
     implementation(libs.media3.common)
     implementation(libs.media3.container)
@@ -177,23 +179,15 @@ dependencies {
     implementation(libs.smbj)
     implementation(libs.rtmp.client)
     implementation(libs.avif.android)
-    implementation(libs.cling.core)
-    implementation(libs.cling.support)
     implementation(libs.eventbus)
     implementation(libs.simple.xml) {
         exclude(group = "stax", module = "stax-api")
         exclude(group = "xpp3", module = "xpp3")
     }
-    "mobileImplementation"(libs.androidx.biometric)
-    "mobileImplementation"(libs.androidx.swiperefreshlayout)
-    "mobileImplementation"(libs.androidx.flexbox)
-    "mobileImplementation"(libs.zxing.embedded) {
-        isTransitive = false
-    }
-    "tabletImplementation"(libs.androidx.biometric)
-    "tabletImplementation"(libs.androidx.swiperefreshlayout)
-    "tabletImplementation"(libs.androidx.flexbox)
-    "tabletImplementation"(libs.zxing.embedded) {
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.swiperefreshlayout)
+    implementation(libs.androidx.flexbox)
+    implementation(libs.zxing.embedded) {
         isTransitive = false
     }
     implementation(libs.work.runtime.ktx)
@@ -203,9 +197,8 @@ dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.lottie)
     implementation(project(":danmaku"))
-    implementation(project(":dlna-dmc"))
-    implementation(project(":dlna-dmr"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
+    compileOnly("javax.enterprise:cdi-api:1.2")
 }

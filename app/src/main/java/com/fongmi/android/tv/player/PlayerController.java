@@ -322,6 +322,11 @@ public class PlayerController {
         if (mOnEpisodeSwitch != null) mOnEpisodeSwitch.run();
     }
 
+    /** 释放资源：移除所有待执行的 Handler 回调，避免随 Activity 生命周期泄漏 */
+    public void release() {
+        mHandler.removeCallbacksAndMessages(null);
+    }
+
     public interface EndHandler {
         void onEnded(boolean notify);
     }

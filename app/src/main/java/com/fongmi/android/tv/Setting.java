@@ -207,6 +207,8 @@ public class Setting {
     public static void putAudioPrefer(boolean audioPrefer) { PlayerSetting.putAudioPrefer(audioPrefer); }
     public static boolean isPreferAAC() { return PlayerSetting.isPreferAAC(); }
     public static void putPreferAAC(boolean preferAAC) { PlayerSetting.putPreferAAC(preferAAC); }
+    public static boolean isAutoRotate() { return PlayerSetting.isAutoRotate(); }
+    public static void putAutoRotate(boolean autoRotate) { PlayerSetting.putAutoRotate(autoRotate); }
     public static boolean isDanmakuLoad() { return PlayerSetting.isDanmakuLoad(); }
     public static void putDanmakuLoad(boolean danmakuLoad) { PlayerSetting.putDanmakuLoad(danmakuLoad); }
     public static float getDanmakuSize() { return PlayerSetting.getDanmakuSize(); }

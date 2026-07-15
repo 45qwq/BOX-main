@@ -30,7 +30,7 @@ public class PyLoader {
     public Spider getSpider(String key, String api, String ext) {
         try {
             if (spiders.containsKey(key)) return spiders.get(key);
-            // Since we removed chaquo, return SpiderNull for now
+            // Python 解析（chaquo）已移除，.py 站点暂返回空实现
             Spider spider = new SpiderNull();
             spiders.put(key, spider);
             return spider;

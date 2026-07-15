@@ -11,6 +11,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.fongmi.android.tv.R;
+import com.fongmi.android.tv.ui.base.BaseFragment;
 import com.fongmi.android.tv.databinding.DialogLinkBinding;
 import com.fongmi.android.tv.ui.activity.VideoActivity;
 import com.fongmi.android.tv.utils.FileChooser;
@@ -60,7 +61,9 @@ public class LinkDialog {
     }
 
     private void onChoose(View view) {
-        FileChooser.from(fragment).show();
+        if (fragment instanceof BaseFragment) {
+            FileChooser.from(fragment).launch(((BaseFragment) fragment).getPickLauncher());
+        }
         dialog.dismiss();
     }
 

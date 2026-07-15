@@ -17,6 +17,7 @@ import com.fongmi.android.tv.BuildConfig;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.Setting;
 import com.fongmi.android.tv.bean.Download;
+import com.fongmi.android.tv.download.DownloadListener;
 import com.fongmi.android.tv.download.DownloadManagerImpl;
 import com.fongmi.android.tv.event.RefreshEvent;
 
@@ -45,6 +46,36 @@ public class DownloadService extends Service {
 
     private NotificationManager notificationManager;
     private DownloadManagerImpl downloadManager;
+
+    private final DownloadListener downloadListener = new DownloadListener() {
+        @Override
+        public void onStatusChanged(Download download, String oldStatus, String newStatus) {
+        }
+        @Override
+        public void onProgress(Download download, int progress, long speed) {
+            String info = download.getVodName() + " - " + formatSpeed(speed) + "/s";
+            if (progress >= 0) info += " " + progress + "%";
+            updateNotificationInternal(info, progress >= 0 ? progress : 0);
+        }
+        @Override
+        public void onCompleted(Download download) {
+            updateNotificationInternal(download.getVodName() + " - 下载完成", 100);
+        }
+        @Override
+        public void onFailed(Download download, String error) {
+            updateNotificationInternal(download.getVodName() + " - 下载失败", download.getProgress());
+        }
+        @Override
+        public void onQueued(Download download) {
+            updateNotificationInternal(download.getVodName() + " - 排队中", 0);
+        }
+    };
+
+    private static String formatSpeed(long speed) {
+        if (speed < 1024) return speed + "B";
+        if (speed < 1024 * 1024) return String.format("%.1fKB", speed / 1024.0);
+        return String.format("%.1fMB", speed / 1024.0 / 1024.0);
+    }
 
     public static void startDownload(Download download) {
         Intent intent = new Intent(App.get(), DownloadService.class);
@@ -91,18 +122,7 @@ public class DownloadService extends Service {
         notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         createNotificationChannel();
         downloadManager = DownloadManagerImpl.get();
-        downloadManager.setServiceCallback(new DownloadManagerImpl.DownloadServiceCallback() {
-            @Override
-            public void updateNotification(String title, int progress) {
-                updateNotificationInternal(title, progress);
-            }
-
-            @Override
-            public void onAllTasksCompleted() {
-                stopForeground(true);
-                stopSelf();
-            }
-        });
+        downloadManager.addListener(downloadListener);
         Logger.i("DownloadService: 初始化完成，并发数: " + downloadManager.getMaxConcurrent());
     }
 
@@ -156,7 +176,7 @@ public class DownloadService extends Service {
             case ACTION_START:
                 String downloadJson = intent.getStringExtra("download");
                 Download download = Download.objectFrom(downloadJson);
-                download.setStatus("pending");
+                download.setStatus(com.fongmi.android.tv.download.DownloadStateMachine.Status.PENDING.name());
                 download.save();
                 DownloadWorker.enqueue(this, download);
                 break;
@@ -168,7 +188,7 @@ public class DownloadService extends Service {
                 String retryId = intent.getStringExtra("download_id");
                 Download retryDownload = Download.find(retryId);
                 if (retryDownload != null) {
-                    retryDownload.setStatus("pending");
+                    retryDownload.setStatus(com.fongmi.android.tv.download.DownloadStateMachine.Status.PENDING.name());
                     retryDownload.setProgress(0);
                     retryDownload.setSpeed(0);
                     retryDownload.save();
@@ -188,6 +208,7 @@ public class DownloadService extends Service {
     public void onDestroy() {
         super.onDestroy();
         if (downloadManager != null) {
+            downloadManager.removeListener(downloadListener);
             downloadManager.shutdown();
         }
     }

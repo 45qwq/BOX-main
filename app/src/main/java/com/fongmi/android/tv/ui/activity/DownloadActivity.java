@@ -17,6 +17,7 @@ import com.fongmi.android.tv.bean.Download;
 import com.fongmi.android.tv.bean.DownloadGroup;
 import com.fongmi.android.tv.databinding.ActivityDownloadBinding;
 import com.fongmi.android.tv.download.DownloadStateMachine;
+import com.fongmi.android.tv.download.DownloadStateMachine.Status;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.service.DownloadService;
 import com.fongmi.android.tv.ui.activity.VideoActivity;
@@ -139,7 +140,7 @@ public class DownloadActivity extends BaseActivity implements DownloadAdapter.On
             List<Download> active = new ArrayList<>();
             List<Download> completed = new ArrayList<>();
             for (Download d : all) {
-                if (DownloadStateMachine.STATUS_COMPLETED.equals(d.getStatus())
+                if (Status.COMPLETED.name().equals(d.getStatus())
                         || d.getStatusInt() == Download.STATUS_COMPLETED) {
                     completed.add(d);
                 } else {
@@ -269,7 +270,7 @@ public class DownloadActivity extends BaseActivity implements DownloadAdapter.On
     @Override
     public void onItemClick(Download item) {
         String status = item.getStatus();
-        if (DownloadStateMachine.STATUS_COMPLETED.equals(status) || item.getProgress() >= 100) {
+        if (Status.COMPLETED.name().equals(status) || item.getProgress() >= 100) {
             String filePath = item.getFilePath();
             if (filePath != null && !filePath.isEmpty()) {
                 new MaterialAlertDialogBuilder(this)
@@ -283,7 +284,7 @@ public class DownloadActivity extends BaseActivity implements DownloadAdapter.On
             } else {
                 com.fongmi.android.tv.utils.Notify.show("找不到视频文件");
             }
-        } else if (DownloadStateMachine.STATUS_FAILED.equals(status)) {
+        } else if (Status.FAILED.name().equals(status)) {
             String errorMsg = item.getErrorMsg();
             String message = item.getVodName() + "\n失败原因: " +
                     (errorMsg != null && !errorMsg.isEmpty() ? errorMsg : "未知错误") +
@@ -344,7 +345,7 @@ public class DownloadActivity extends BaseActivity implements DownloadAdapter.On
             message += "\n文件路径：" + item.getFilePath();
         }
         message += "\n状态：" + DownloadStateMachine.getStatusDisplay(status);
-        if (DownloadStateMachine.STATUS_FAILED.equals(status)) {
+        if (Status.FAILED.name().equals(status)) {
             String errorMsg = item.getErrorMsg();
             if (errorMsg != null && !errorMsg.isEmpty()) {
                 message += "\n失败原因：" + errorMsg;

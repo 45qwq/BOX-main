@@ -70,4 +70,10 @@ public class EpisodeFragment extends BaseFragment implements EpisodeAdapter.OnCl
     public void onItemClick(Episode item) {
         mViewModel.setEpisode(item);
     }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        mBinding = null;
+    }
 }

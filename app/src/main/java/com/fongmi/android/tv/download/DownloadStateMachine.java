@@ -2,17 +2,15 @@ package com.fongmi.android.tv.download;
 
 import com.github.catvod.utils.Logger;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.Set;
 
 /**
  * 下载任务状态机
- * 规范状态转换：pending → queued → downloading → (merging) → completed
+ * 规范状态转换：PENDING → QUEUED → DOWNLOADING → (MERGING) → COMPLETED
  *                                              ↓              ↓
- *                                           paused → pending  failed
- *                                            failed → pending (retry)
+ *                                            PAUSED → PENDING  FAILED
+ *                                             FAILED → PENDING (retry)
  *
  * 错误类型分类：
  *   RETRYABLE   - 可重试错误（网络超时、429、503 等）
@@ -20,17 +18,32 @@ import java.util.Set;
  */
 public class DownloadStateMachine {
 
+    /** 下载任务状态枚举 */
+    public enum Status {
+        PENDING("等待中"),
+        QUEUED("排队中"),
+        DOWNLOADING("下载中"),
+        MERGING("合并中"),
+        COMPLETED("已完成"),
+        FAILED("失败"),
+        PAUSED("已暂停"),
+        CANCELLED("已取消");
 
+        private final String displayName;
 
-    // ============ 状态常量 ============
-    public static final String STATUS_PENDING = "pending";
-    public static final String STATUS_QUEUED = "queued";
-    public static final String STATUS_DOWNLOADING = "downloading";
-    public static final String STATUS_MERGING = "merging";
-    public static final String STATUS_COMPLETED = "completed";
-    public static final String STATUS_FAILED = "failed";
-    public static final String STATUS_PAUSED = "paused";
-    public static final String STATUS_CANCELLED = "cancelled";
+        Status(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        /** 获取中文描述 */
+        public static String getDisplayName(Status status) {
+            return status != null ? status.displayName : "未知";
+        }
+    }
 
     // ============ 错误类型 ============
     public enum ErrorType {
@@ -38,50 +51,47 @@ public class DownloadStateMachine {
         NON_RETRYABLE   // 不可重试（404、403、文件损坏等）
     }
 
-    // 所有有效状态集合
-    public static final Set<String> VALID_STATUSES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-            STATUS_PENDING, STATUS_QUEUED, STATUS_DOWNLOADING, STATUS_MERGING,
-            STATUS_COMPLETED, STATUS_FAILED, STATUS_PAUSED, STATUS_CANCELLED
-    )));
+    // 所有有效状态
+    public static final Set<Status> VALID_STATUSES = EnumSet.allOf(Status.class);
 
     // 活跃状态（正在运行或等待运行）
-    public static final Set<String> ACTIVE_STATUSES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-            STATUS_PENDING, STATUS_QUEUED, STATUS_DOWNLOADING, STATUS_MERGING
-    )));
+    public static final Set<Status> ACTIVE_STATUSES = EnumSet.of(
+            Status.PENDING, Status.QUEUED, Status.DOWNLOADING, Status.MERGING
+    );
 
     // 终态（不再变化）
-    public static final Set<String> FINAL_STATUSES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-            STATUS_COMPLETED, STATUS_CANCELLED
-    )));
+    public static final Set<Status> FINAL_STATUSES = EnumSet.of(
+            Status.COMPLETED, Status.CANCELLED
+    );
 
     /**
      * 验证状态转换是否合法
      * @return true 如果转换合法
      */
-    public static boolean isValidTransition(String from, String to) {
+    public static boolean isValidTransition(Status from, Status to) {
         if (from == null || to == null) return false;
-        if (from.equals(to)) return true;
+        if (from == to) return true;
 
         switch (from) {
-            case STATUS_PENDING:
-                return STATUS_QUEUED.equals(to) || STATUS_DOWNLOADING.equals(to)
-                        || STATUS_FAILED.equals(to) || STATUS_CANCELLED.equals(to);
-            case STATUS_QUEUED:
-                return STATUS_DOWNLOADING.equals(to) || STATUS_CANCELLED.equals(to)
-                        || STATUS_FAILED.equals(to);
-            case STATUS_DOWNLOADING:
-                return STATUS_MERGING.equals(to) || STATUS_COMPLETED.equals(to)
-                        || STATUS_FAILED.equals(to) || STATUS_PAUSED.equals(to)
-                        || STATUS_CANCELLED.equals(to);
-            case STATUS_MERGING:
-                return STATUS_COMPLETED.equals(to) || STATUS_FAILED.equals(to)
-                        || STATUS_CANCELLED.equals(to);
-            case STATUS_PAUSED:
-                return STATUS_PENDING.equals(to) || STATUS_CANCELLED.equals(to);
-            case STATUS_FAILED:
-                return STATUS_PENDING.equals(to) || STATUS_CANCELLED.equals(to);
-            case STATUS_COMPLETED:
-            case STATUS_CANCELLED:
+            case PENDING:
+                return to == Status.QUEUED || to == Status.DOWNLOADING
+                        || to == Status.FAILED || to == Status.CANCELLED;
+            case QUEUED:
+                return to == Status.DOWNLOADING || to == Status.CANCELLED
+                        || to == Status.FAILED;
+            case DOWNLOADING:
+                return to == Status.MERGING || to == Status.COMPLETED
+                        || to == Status.FAILED || to == Status.PAUSED
+                        || to == Status.CANCELLED;
+            case MERGING:
+                return to == Status.COMPLETED || to == Status.FAILED
+                        || to == Status.CANCELLED;
+            case PAUSED:
+                return to == Status.PENDING || to == Status.CANCELLED;
+            case FAILED:
+                return to == Status.PENDING || to == Status.CANCELLED;
+            case COMPLETED:
+            case CANCELLED:
                 return false; // 终态不可转换
             default:
                 return false;
@@ -92,7 +102,7 @@ public class DownloadStateMachine {
      * 安全转换状态，如果转换非法则记录警告
      * @return 新的状态（如果转换非法则返回旧状态）
      */
-    public static String safeTransition(String currentStatus, String newStatus) {
+    public static Status safeTransition(Status currentStatus, Status newStatus) {
         if (isValidTransition(currentStatus, newStatus)) {
             return newStatus;
         }
@@ -104,21 +114,39 @@ public class DownloadStateMachine {
      * 判断是否为活跃状态（正在运行或等待运行）
      */
     public static boolean isActive(String status) {
-        return ACTIVE_STATUSES.contains(status);
+        if (status == null) return false;
+        try {
+            Status s = Status.valueOf(status);
+            return ACTIVE_STATUSES.contains(s);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     /**
      * 判断是否为终态
      */
     public static boolean isFinal(String status) {
-        return FINAL_STATUSES.contains(status);
+        if (status == null) return false;
+        try {
+            Status s = Status.valueOf(status);
+            return FINAL_STATUSES.contains(s);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     /**
      * 判断是否为可恢复状态（可从中断点恢复）
      */
     public static boolean isResumable(String status) {
-        return STATUS_PAUSED.equals(status) || STATUS_FAILED.equals(status);
+        if (status == null) return false;
+        try {
+            Status s = Status.valueOf(status);
+            return s == Status.PAUSED || s == Status.FAILED;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     /**
@@ -179,16 +207,11 @@ public class DownloadStateMachine {
      */
     public static String getStatusDisplay(String status) {
         if (status == null) return "未知";
-        switch (status) {
-            case STATUS_PENDING: return "等待中";
-            case STATUS_QUEUED: return "排队中";
-            case STATUS_DOWNLOADING: return "下载中";
-            case STATUS_MERGING: return "合并中";
-            case STATUS_COMPLETED: return "已完成";
-            case STATUS_FAILED: return "失败";
-            case STATUS_PAUSED: return "已暂停";
-            case STATUS_CANCELLED: return "已取消";
-            default: return status;
+        try {
+            Status s = Status.valueOf(status);
+            return Status.getDisplayName(s);
+        } catch (IllegalArgumentException e) {
+            return status;
         }
     }
 }

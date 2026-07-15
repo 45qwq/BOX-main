@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import org.json.JSONException
 import androidx.annotation.NonNull
 import androidx.annotation.Nullable
 import androidx.core.os.HandlerCompat
@@ -135,6 +136,8 @@ class App : Application() {
             .backgroundMode(CaocConfig.BACKGROUND_MODE_SILENT)
             .errorActivity(CrashActivity::class.java)
             .apply()
+        // 安装后台线程异常兜底：拦截爬虫库在后台解析弹幕/搜索数据时的可恢复异常，避免杀进程
+        installCrashGuard()
         Notify.createChannel()
 
         initCacheCleaner()
@@ -158,6 +161,8 @@ class App : Application() {
 
             override fun onActivityPaused(@NonNull activity: Activity) {
                 if (activity() === activity) setActivity(null)
+                // 退到后台时取消挂起的周期同步轮询，避免消息队列常驻、与生命周期脱钩
+                App.removeCallbacks(syncTask)
             }
 
             override fun onActivityStopped(@NonNull activity: Activity) {
@@ -196,6 +201,32 @@ class App : Application() {
         post(cleanTask, Constant.CACHE_CLEAN_INTERVAL)
     }
 
+    /**
+     * 后台线程未捕获异常兜底。
+     * catvod 预编译爬虫库（custom_spider.jar）在后台线程解析弹幕/搜索数据时，
+     * 若源数据缺字段（如 No value for title）会抛 JSONException 且未被捕获，直接杀死进程。
+     * 此处对"后台线程 + 爬虫库解析类异常"仅记录日志、不杀进程；
+     * 其余异常（含主线程致命崩溃）仍转交 customactivityoncrash 的崩溃页处理。
+     */
+    private fun installCrashGuard() {
+        val caocHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            val isMainThread = thread === Looper.getMainLooper().thread
+            val fromSpider = throwable?.stackTrace?.any {
+                it.className.startsWith("com.github.catvod.spider")
+            } ?: false
+            val recoverable = throwable is JSONException || fromSpider
+            if (!isMainThread && recoverable) {
+                // 后台爬虫解析异常：兜底记录，不终止进程
+                Logger.e("App: 后台爬虫解析异常已被兜底(未崩溃): " + (throwable?.message ?: ""))
+                Logger.e("App", throwable)
+                return@setDefaultUncaughtExceptionHandler
+            }
+            // 其他异常（主线程致命崩溃等）交给 customactivityoncrash 处理
+            caocHandler?.uncaughtException(thread, throwable)
+        }
+    }
+
     private fun checkPendingInstall() {
         val installer = UpdateInstaller.get()
         if (installer.hasPendingInstall()) {
@@ -213,7 +244,7 @@ class App : Application() {
         if (!Setting.getUpdate()) return
         post({
             if (!activity.isFinishing && !activity.isDestroyed) {
-                Updater.create().auto().release().start(activity)
+                // Updater.create().auto().release().start(activity) // 移除自动检查更新功能，仅保留版本号显示
             }
         }, Constant.AUTO_UPDATE_DELAY)
     }

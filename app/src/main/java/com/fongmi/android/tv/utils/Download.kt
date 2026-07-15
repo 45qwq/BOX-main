@@ -8,6 +8,7 @@ import com.google.common.net.HttpHeaders
 import java.io.*
 import okhttp3.Response
 
+@Deprecated("Use DownloadManagerImpl or OkHttp directly")
 class Download(
     val url: String?,
     private val file: File?,
@@ -196,23 +197,8 @@ class Download(
                 Logger.e("File size mismatch: expected $expectedLength, actual ${file.length()}")
                 return false
             }
-            if (file.length() < 4) {
-                Logger.e("File too small: ${file.length()} bytes")
-                return false
-            }
-            FileInputStream(file).use { fis ->
-                val header = ByteArray(4)
-                val bytesRead = fis.read(header)
-                if (bytesRead < 4) {
-                    Logger.e("Cannot read file header")
-                    return false
-                }
-                if (header[0] != 0x50.toByte() || header[1] != 0x4B.toByte() || header[2] != 0x03.toByte() || header[3] != 0x04.toByte()) {
-                    Logger.e("Invalid APK file header: ${header.joinToString(" ") { "%02X".format(it) }}")
-                    return false
-                }
-            }
-            Logger.d("APK file verification passed: ${file.name} (${file.length()} bytes)")
+            // 视频文件只做基本存在性和大小校验，不再检查 APK/ZIP 头部
+            Logger.d("File verification passed: ${file.name} (${file.length()} bytes)")
             return true
         } catch (e: Exception) {
             Logger.e("File verification failed: ${e.message}")

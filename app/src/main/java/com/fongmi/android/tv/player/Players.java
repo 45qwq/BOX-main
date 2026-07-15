@@ -52,6 +52,7 @@ import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.UrlUtil;
 import com.fongmi.android.tv.utils.Util;
+import com.fongmi.android.tv.utils.ThreadPools;
 import com.github.catvod.utils.Path;
 import com.google.common.net.HttpHeaders;
 
@@ -62,7 +63,6 @@ import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import com.fongmi.android.tv.utils.ThreadPools;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -98,6 +98,11 @@ public class Players implements Player.Listener, ParseCallback {
 
     private int decode;
     private int retry;
+    private long pendingSeek;     // 重建播放器后需跳回的进度
+    private boolean pendingResume; // 重建播放器后是否恢复播放
+    // 解码重建可能在播放器线程(onPlayerError)触发，而 STATE_READY 回调在主线程，
+    // 读写 pendingSeek/pendingResume 需加锁，避免 seek 错位或进度丢失。
+    private final Object seekLock = new Object();
     private Anime4KController anime4KController;
 
     public static Players create(Activity activity) {
@@ -356,7 +361,17 @@ public class Players implements Player.Listener, ParseCallback {
         else if (decode == SOFT) decode = AUTO;
         else decode = HARD;
         Setting.putDecode(decode);
+        // Media3 不支持运行时替换 RenderersFactory，解码器切换必须重建播放器实例。
+        // 重建后通过 pendingSeek 在缓冲就绪(STATE_READY)时跳回原进度并恢复播放，避免“从头播放”。
+        long position = getPosition();
+        boolean resume = exoPlayer != null && (exoPlayer.isPlaying() || exoPlayer.getPlayWhenReady());
         init(view);
+        if (position > 0) {
+            synchronized (seekLock) {
+                pendingSeek = position;
+                pendingResume = resume;
+            }
+        }
     }
 
     public String getPositionTime(long time) {
@@ -578,9 +593,9 @@ public class Players implements Player.Listener, ParseCallback {
         }
     }
 
-    public void choose(Activity activity, CharSequence title) {
+    public Intent choose(Activity activity, CharSequence title) {
         try {
-            if (isEmpty()) return;
+            if (isEmpty()) return null;
             List<String> list = new ArrayList<>();
             for (Map.Entry<String, String> entry : getHeaders().entrySet()) list.addAll(Arrays.asList(entry.getKey(), entry.getValue()));
             Uri data = getUrl().startsWith("file://") || getUrl().startsWith("/") ? FileUtil.getShareUri(getUrl()) : Uri.parse(getUrl());
@@ -592,9 +607,10 @@ public class Players implements Player.Listener, ParseCallback {
             intent.putExtra("return_result", isVod());
             intent.putExtra("headers", list.toArray(new String[0]));
             if (isVod()) intent.putExtra("position", (int) getPosition());
-            activity.startActivityForResult(Util.getChooser(intent), 1001);
+            return Util.getChooser(intent);
         } catch (Exception e) {
             Logger.e("Error", e);
+            return null;
         }
     }
 
@@ -645,6 +661,21 @@ public class Players implements Player.Listener, ParseCallback {
     public void onPlaybackStateChanged(int state) {
         if (danPlayer != null) danPlayer.check(state);
         PlayerEvent.state(tag, state);
+        // 切换解码器重建播放器后，缓冲就绪即跳回原进度并恢复播放（避免从头播放）
+        if (state == Player.STATE_READY && exoPlayer != null) {
+            long pos;
+            boolean resume;
+            synchronized (seekLock) {
+                pos = pendingSeek;
+                resume = pendingResume;
+                pendingSeek = 0;
+                pendingResume = false;
+            }
+            if (pos > 0) {
+                exoPlayer.seekTo(pos);
+                if (resume) exoPlayer.play();
+            }
+        }
     }
 
     @Override
@@ -683,7 +714,9 @@ public class Players implements Player.Listener, ParseCallback {
             case PlaybackException.ERROR_CODE_DECODER_INIT_FAILED:
             case PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED:
             case PlaybackException.ERROR_CODE_DECODING_FAILED:
-                toggleDecode();
+                // 解码失败：受重试上限约束，避免硬解/软解/自动三者均失败时在 HARD<->SOFT<->AUTO 间死循环重建播放器（CPU 飙升、发烫）
+                if (retried()) ErrorEvent.extract(tag, friendlyMsg);
+                else toggleDecode();
                 break;
             case PlaybackException.ERROR_CODE_IO_UNSPECIFIED:
             case PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED:

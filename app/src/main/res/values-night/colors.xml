@@ -1,7 +1,8 @@
 <resources>
-    
-    <!-- Launcher icon background (Dark mode) -->
-    <color name="launcher_background">#222222</color>
+
+    <color name="primary">#0288D1</color>
+    <color name="primaryDark">#01579B</color>
+    <color name="accent">#0288D1</color>
+    <color name="indicator">@color/black_50</color>
 
 </resources>
-

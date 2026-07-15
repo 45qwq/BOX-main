@@ -3,6 +3,7 @@ package com.fongmi.android.tv.ui.dialog;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -66,7 +67,7 @@ public final class DanmakuDialog extends BaseDialog implements DanmakuAdapter.On
     }
 
     private void showChooser(View view) {
-        FileChooser.from(this).show(new String[]{"text/*"});
+        FileChooser.from(this).launch(getPickLauncher(), "text/*", new String[]{"text/*"});
         player.pause();
     }
 
@@ -77,10 +78,9 @@ public final class DanmakuDialog extends BaseDialog implements DanmakuAdapter.On
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode != Activity.RESULT_OK || requestCode != FileChooser.REQUEST_PICK_FILE) return;
-        player.setDanmaku(Danmaku.from(FileChooser.getPathFromUri(data.getData())));
+    protected void onPickFile(@Nullable Uri uri) {
+        if (uri == null) return;
+        player.setDanmaku(Danmaku.from(FileChooser.getPathFromUri(uri)));
         dismiss();
     }
 }

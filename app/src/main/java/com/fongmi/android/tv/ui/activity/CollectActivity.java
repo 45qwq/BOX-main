@@ -39,9 +39,8 @@ import com.fongmi.android.tv.ui.base.ViewType;
 import com.fongmi.android.tv.ui.custom.CustomScroller;
 import com.fongmi.android.tv.ui.custom.CustomTextListener;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
-import com.fongmi.android.tv.utils.PauseExecutor;
-import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.ThreadPools;
+import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.SearchResultOptimizer;
 import com.fongmi.android.tv.utils.Util;
 import com.github.catvod.net.OkHttp;
@@ -66,7 +65,7 @@ public class CollectActivity extends BaseActivity implements CustomScroller.Call
     private WordAdapter mWordAdapter;
     private CustomScroller mScroller;
     private SiteViewModel mViewModel;
-    private PauseExecutor mExecutor;
+    private ThreadPools.SearchController mSearchController;
     private List<Site> mSites;
 
     public static void start(Activity activity) {
@@ -96,6 +95,7 @@ public class CollectActivity extends BaseActivity implements CustomScroller.Call
     protected void initView(Bundle savedInstanceState) {
         mScroller = new CustomScroller(this);
         mSites = new ArrayList<>();
+        mSearchController = ThreadPools.SearchController.get();
         setRecyclerView();
         setViewModel();
         checkKeyword();
@@ -135,6 +135,7 @@ public class CollectActivity extends BaseActivity implements CustomScroller.Call
         mBinding.recordRecycler.setHasFixedSize(false);
         mBinding.recordRecycler.setAdapter(mRecordAdapter = new RecordAdapter(this));
         mBinding.recordRecycler.setLayoutManager(new FlexboxLayoutManager(this, FlexDirection.ROW));
+        mBinding.recordClear.setOnClickListener(v -> mRecordAdapter.clear());
     }
 
     private void setViewType() {
@@ -197,10 +198,12 @@ public class CollectActivity extends BaseActivity implements CustomScroller.Call
         mBinding.view.setVisibility(View.VISIBLE);
         mBinding.result.setVisibility(View.VISIBLE);
         updateEmptyState(); // 搜索开始时显示空状态
-        if (mExecutor != null) mExecutor.shutdownNow();
-        mExecutor = ThreadPools.newPauseExecutor(20);
         String keyword = mBinding.keyword.getText().toString().trim();
-        for (Site site : mSites) mExecutor.execute(() -> search(site, keyword));
+        List<Runnable> tasks = new ArrayList<>();
+        for (Site site : mSites) {
+            tasks.add(() -> search(site, keyword));
+        }
+        mSearchController.start(20, tasks);
         App.post(() -> mRecordAdapter.add(keyword), 250);
     }
 
@@ -268,7 +271,7 @@ public class CollectActivity extends BaseActivity implements CustomScroller.Call
         mBinding.site.setVisibility(View.VISIBLE);
         mBinding.agent.setVisibility(View.VISIBLE);
         mBinding.emptyLayout.getRoot().setVisibility(View.GONE); // 隐藏空状态动画
-        if (mExecutor != null) mExecutor.shutdownNow();
+        mSearchController.cancel();
     }
 
     @Override
@@ -291,6 +294,7 @@ public class CollectActivity extends BaseActivity implements CustomScroller.Call
     public void onDataChanged(int size) {
         mBinding.record.setVisibility(size == 0 ? View.GONE : View.VISIBLE);
         mBinding.recordRecycler.setVisibility(size == 0 ? View.GONE : View.VISIBLE);
+        mBinding.recordClear.setVisibility(size == 0 ? View.GONE : View.VISIBLE);
         App.post(() -> mBinding.recordRecycler.requestLayout(), 250);
     }
 
@@ -328,13 +332,11 @@ public class CollectActivity extends BaseActivity implements CustomScroller.Call
     @Override
     protected void onResume() {
         super.onResume();
-        if (mExecutor != null) mExecutor.resume();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        if (mExecutor != null) mExecutor.pause();
     }
 
     @Override

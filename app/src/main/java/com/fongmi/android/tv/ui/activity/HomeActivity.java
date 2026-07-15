@@ -103,6 +103,17 @@ public class HomeActivity extends BaseActivity {
         App.execute(() -> {
             com.fongmi.android.tv.bean.DefaultConfig.initIfNeeded();
             WallConfig.get().init();
+            // 安全恢复：若上次启动发生过崩溃（频繁换源等导致的进程崩溃），
+            // 则不自动加载上次的源，避免"崩溃→重启→再崩溃"的死循环。
+            // 进入空源/安全态，等用户手动选择源。换源时会清除该标记。
+            boolean lastCrash = com.github.catvod.utils.Prefers.getBoolean("crash", false);
+            if (lastCrash) {
+                com.github.catvod.utils.Prefers.remove("crash");
+                App.post(() -> Notify.show("检测到上次异常，已进入安全模式，请重新选择订阅源"));
+                RefreshEvent.config();
+                StateEvent.empty();
+                return;
+            }
             VodConfig.get().init().load(getCallback());
         });
     }
@@ -116,6 +127,11 @@ public class HomeActivity extends BaseActivity {
 
             @Override
             public void success() {
+                // 源加载成功：说明此前若发生过崩溃，现已恢复正常，清除崩溃持久化标记
+                try {
+                    com.github.catvod.utils.Prefers.remove("crash");
+                } catch (Exception ignore) {
+                }
                 checkAction(getIntent());
                 RefreshEvent.config();
                 RefreshEvent.video();

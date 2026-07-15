@@ -1,5 +1,6 @@
 package com.fongmi.android.tv.utils
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.text.TextUtils
@@ -10,7 +11,6 @@ import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.load.model.LazyHeaders
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.signature.ObjectKey
-import com.fongmi.android.tv.App
 import com.fongmi.android.tv.R
 import com.fongmi.android.tv.Setting
 import com.github.catvod.utils.Json
@@ -40,9 +40,9 @@ object ImgUtil {
     }
 
     @JvmStatic
-    fun load(url: String?, error: Int, target: CustomTarget<Drawable>) {
+    fun load(context: Context, url: String?, error: Int, target: CustomTarget<Drawable>) {
         if (TextUtils.isEmpty(url)) target.onLoadFailed(ResUtil.getDrawable(error))
-        else GlideApp.with(App.get()).asDrawable().load(getUrl(url)).error(error).skipMemoryCache(false).dontAnimate().diskCacheStrategy(DiskCacheStrategy.ALL).signature(getSignature(url!!)).into(target)
+        else GlideApp.with(context).asDrawable().load(getUrl(url)).error(error).skipMemoryCache(false).dontAnimate().diskCacheStrategy(DiskCacheStrategy.ALL).signature(getSignature(url!!)).into(target)
     }
 
     @JvmStatic
@@ -58,7 +58,7 @@ object ImgUtil {
     @JvmStatic
     fun load(text: String, url: String?, view: ImageView, scaleType: ImageView.ScaleType, rect: Boolean) {
         view.scaleType = scaleType
-        if (!TextUtils.isEmpty(url)) GlideApp.with(App.get()).asBitmap().load(getUrl(url)).placeholder(R.drawable.ic_img_loading).error(R.drawable.ic_img_error).skipMemoryCache(false).dontAnimate().diskCacheStrategy(DiskCacheStrategy.ALL).sizeMultiplier(Setting.getThumbnail()).signature(getSignature(url!!)).listener(GlideHelper.getBitmapListener(view, scaleType)).into(view)
+        if (!TextUtils.isEmpty(url)) GlideApp.with(view).asBitmap().load(getUrl(url)).placeholder(R.drawable.ic_img_loading).error(R.drawable.ic_img_error).skipMemoryCache(false).dontAnimate().diskCacheStrategy(DiskCacheStrategy.ALL).sizeMultiplier(Setting.getThumbnail()).signature(getSignature(url!!)).listener(GlideHelper.getBitmapListener(view, scaleType)).into(view)
         else if (text.isNotEmpty()) view.setImageDrawable(getTextDrawable(text.substring(0, 1), rect))
         else view.setImageResource(R.drawable.ic_img_error)
     }
@@ -66,7 +66,7 @@ object ImgUtil {
     @JvmStatic
     fun loadVod(text: String, url: String?, view: ImageView) {
         view.scaleType = ImageView.ScaleType.CENTER
-        if (!TextUtils.isEmpty(url)) GlideApp.with(App.get()).asBitmap().load(getUrl(url)).placeholder(R.drawable.ic_img_loading).diskCacheStrategy(DiskCacheStrategy.ALL).listener(GlideHelper.getBitmapListener(view)).into(view)
+        if (!TextUtils.isEmpty(url)) GlideApp.with(view).asBitmap().load(getUrl(url)).placeholder(R.drawable.ic_img_loading).diskCacheStrategy(DiskCacheStrategy.ALL).listener(GlideHelper.getBitmapListener(view)).into(view)
         else if (text.isNotEmpty()) view.setImageDrawable(getTextDrawable(text.substring(0, 1), true))
         else view.setImageResource(R.drawable.ic_img_error)
     }
@@ -75,7 +75,7 @@ object ImgUtil {
     fun loadLive(url: String?, view: ImageView) {
         view.visibility = if (TextUtils.isEmpty(url)) View.GONE else View.VISIBLE
         if (TextUtils.isEmpty(url)) view.setImageResource(R.drawable.ic_img_empty)
-        else GlideApp.with(App.get()).asBitmap().load(getUrl(url)).error(R.drawable.ic_img_empty).skipMemoryCache(false).dontAnimate().diskCacheStrategy(DiskCacheStrategy.ALL).signature(getSignature(url!!)).into(view)
+        else GlideApp.with(view).asBitmap().load(getUrl(url)).error(R.drawable.ic_img_empty).skipMemoryCache(false).dontAnimate().diskCacheStrategy(DiskCacheStrategy.ALL).signature(getSignature(url!!)).into(view)
     }
 
     private fun getTextDrawable(text: String, rect: Boolean): Drawable {

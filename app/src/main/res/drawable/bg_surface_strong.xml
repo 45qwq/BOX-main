@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 较强表面：用于分组标题条、统计栏等需要更明显区分的容器 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/white_10" />
+    <corners android:radius="14dp" />
+</shape>

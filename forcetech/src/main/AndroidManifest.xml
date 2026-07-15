@@ -14,7 +14,7 @@
             android:process=":p3p" />
 
         <service
-            android:name="com.gsoft.mitv.MainActivity"
+            android:name="com.gsoft.mitv.MitvService"
             android:exported="false"
             android:process=":mitv" />
 

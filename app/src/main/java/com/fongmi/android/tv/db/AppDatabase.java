@@ -55,8 +55,8 @@ public abstract class AppDatabase extends RoomDatabase {
                 .addMigrations(Migrations.MIGRATION_33_34)
                 .addMigrations(Migrations.MIGRATION_34_35)
                 .addMigrations(Migrations.MIGRATION_35_36)
-                // 仅在降级时丢失数据，升级时强制走迁移
-                .fallbackToDestructiveMigrationOnDowngrade().build();
+                // 升级/降级迁移失败时（如中途崩溃导致半迁移状态）自动重建数据库，避免 App 崩溃白屏
+                .fallbackToDestructiveMigration().build();
     }
 
     public abstract KeepDao getKeepDao();

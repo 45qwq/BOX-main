@@ -15,9 +15,13 @@ public class DefaultConfig {
         {"https://www.iyouhun.com/tv/dc", "游魂多仓"},
         {"https://www.iyouhun.com/tv/yh", "游魂多仓（备）"},
         {"http://fty.xxooo.cf/tv", "摸鱼儿"},
-        {"http://我不是.摸鱼儿.top", "摸鱼儿.top"},
+        {"http://摸鱼儿.cc", "摸鱼主接口"},
+        {"http://我不是.摸鱼儿.cc", "摸鱼备用接口一"},
+        {"http://我不是.摸鱼儿.top", "摸鱼备用接口二"},
         {"http://www.饭太硬.net/tv", "饭太硬接口"},
-        {"http://xhztv.top/4k.json", "小盒子4K"}
+        {"http://www.小不点.com", "小不点备用接口"},
+        {"http://xhztv.top/4k.json", "小盒子4K"},
+        {"https://6800.kstore.vip/fish.json", "凯速"},
     };
 
     /**

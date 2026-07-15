@@ -13,6 +13,9 @@ import com.bumptech.glide.integration.avif.AvifByteBufferBitmapDecoder
 import com.bumptech.glide.integration.avif.AvifGlideModule
 import com.bumptech.glide.integration.avif.AvifStreamBitmapDecoder
 import com.bumptech.glide.integration.okhttp3.OkHttpUrlLoader
+import com.bumptech.glide.load.engine.cache.InternalCacheDiskCacheFactory
+import com.bumptech.glide.load.engine.cache.LruResourceCache
+import com.bumptech.glide.load.engine.cache.MemorySizeCalculator
 import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.module.AppGlideModule
 import com.github.catvod.net.OkHttp
@@ -23,8 +26,20 @@ import java.nio.ByteBuffer
 @Excludes(AvifGlideModule::class)
 class OkGlideModule : AppGlideModule() {
 
+    companion object {
+        // 磁盘缓存上限 150MB（默认 250MB，列表缩略图多时膨胀快）
+        private const val DISK_CACHE_SIZE = 150L * 1024 * 1024
+    }
+
     override fun applyOptions(@NonNull context: Context, @NonNull builder: GlideBuilder) {
         builder.setLogLevel(Log.ERROR)
+        // 按设备内存档次限制 Glide 内存缓存，缓解列表图多时的 GC 抖动
+        val calculator = MemorySizeCalculator.Builder(context)
+            .setMemoryCacheScreens(2f)
+            .build()
+        builder.setMemoryCache(LruResourceCache(calculator.memoryCacheSize.toLong()))
+        // 限制磁盘缓存上限，避免无上限膨胀占用存储空间
+        builder.setDiskCache(InternalCacheDiskCacheFactory(context, DISK_CACHE_SIZE))
     }
 
     override fun registerComponents(@NonNull context: Context, @NonNull glide: Glide, registry: Registry) {

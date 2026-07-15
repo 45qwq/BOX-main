@@ -172,7 +172,7 @@ object Util {
 
     @JvmStatic
     fun isMobile(): Boolean {
-        return "mobile" == BuildConfig.FLAVOR_mode
+        return true
     }
 
     @JvmStatic

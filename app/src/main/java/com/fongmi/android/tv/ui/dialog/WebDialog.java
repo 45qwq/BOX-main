@@ -5,7 +5,6 @@ import android.view.View;
 
 import androidx.appcompat.app.AlertDialog;
 
-import com.fongmi.android.tv.App;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 public class WebDialog {
@@ -17,7 +16,7 @@ public class WebDialog {
     }
 
     public WebDialog(View view) {
-        this.dialog = new MaterialAlertDialogBuilder(App.activity()).setView(view).create();
+        this.dialog = new MaterialAlertDialogBuilder(view.getContext()).setView(view).create();
         this.dialog.setOnDismissListener((DialogInterface.OnDismissListener) view);
     }
 

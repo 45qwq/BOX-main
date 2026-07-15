@@ -10,42 +10,27 @@ import android.view.View;
 import androidx.appcompat.app.AlertDialog;
 
 import com.fongmi.android.tv.databinding.DialogUpdateBinding;
-import com.fongmi.android.tv.utils.Download;
-import com.fongmi.android.tv.utils.FileUtil;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.ResUtil;
-import com.fongmi.android.tv.utils.UpdateInstaller;
 import com.github.catvod.net.OkHttp;
-import com.github.catvod.utils.Github;
 import com.github.catvod.utils.Logger;
-import com.github.catvod.utils.Path;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.util.Locale;
 
-public class Updater implements Download.Callback {
+
+public class Updater {
 
     private DialogUpdateBinding binding;
-    private Download download;
     private AlertDialog dialog;
     private boolean dev;
     private String latestVersion;
     private String releaseApkUrl;
-    private String fallbackApkUrl;
-
-    private File getFile() {
-        return Path.cache("XMBOX-update.apk");
-    }
 
     private String getApk() {
-        if (releaseApkUrl != null && !releaseApkUrl.isEmpty()) {
-            return releaseApkUrl;
-        }
-        return "";
+        return releaseApkUrl != null ? releaseApkUrl : "";
     }
 
     public static Updater create() {
@@ -134,8 +119,8 @@ public class Updater implements Download.Callback {
                 return;
             }
 
-            String mode = BuildConfig.FLAVOR_mode;
-            String abi = BuildConfig.FLAVOR_abi;
+            String mode = "mobile";
+            String abi = BuildConfig.FLAVOR;
             
             // 兼容多种ABI格式：arm64_v8a -> arm64, armeabi_v7a -> armv7
             String abiShort = abi.replace("arm64_v8a", "arm64").replace("armeabi_v7a", "armv7");
@@ -151,7 +136,6 @@ public class Updater implements Download.Callback {
                     assetName.toLowerCase().contains(mode.toLowerCase()) && 
                     (assetName.contains(abiShort) || assetName.contains(abi.replace("_", "-")))) {
                     releaseApkUrl = asset.optString("browser_download_url");
-                    fallbackApkUrl = releaseApkUrl;
                     found = true;
                     break;
                 }
@@ -234,9 +218,6 @@ public class Updater implements Download.Callback {
 
     private void cancel(View view) {
         Setting.putUpdate(false);
-        if (download != null) {
-            download.cancel();
-        }
         dialog.dismiss();
     }
 
@@ -266,24 +247,4 @@ public class Updater implements Download.Callback {
         }
     }
 
-    @Override
-    public void progress(int progress) {
-        // 进度更新，由Download类内部处理
-    }
-
-    @Override
-    public void success(File file) {
-        App.post(() -> {
-            if (dialog != null) dialog.dismiss();
-            UpdateInstaller.get().install(file);
-        });
-    }
-
-    @Override
-    public void error(String msg) {
-        App.post(() -> {
-            Notify.show("下载失败: " + msg);
-            dismiss();
-        });
-    }
 }

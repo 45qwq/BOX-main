@@ -255,4 +255,10 @@ public class TypeFragment extends BaseFragment implements CustomScroller.Callbac
         onRefresh();
         return false;
     }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        mBinding = null;
+    }
 }

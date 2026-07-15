@@ -34,6 +34,6 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSource(): Source {
-        return Source.get()
+        return Source
     }
 }

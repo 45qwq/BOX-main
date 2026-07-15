@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey;
 
 import com.fongmi.android.tv.Setting;
 import com.fongmi.android.tv.db.AppDatabase;
+import com.fongmi.android.tv.download.DownloadStateMachine;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 
@@ -67,7 +68,7 @@ public class Download {
     public Download() {
         this.createTime = System.currentTimeMillis();
         this.progress = 0;
-        this.status = "pending";
+        this.status = DownloadStateMachine.Status.PENDING.name();
     }
 
     @androidx.room.Ignore
@@ -78,7 +79,7 @@ public class Download {
         this.url = url;
         this.createTime = System.currentTimeMillis();
         this.progress = 0;
-        this.status = "pending";
+        this.status = DownloadStateMachine.Status.PENDING.name();
     }
 
     @androidx.room.Ignore
@@ -90,7 +91,7 @@ public class Download {
         this.header = header;
         this.createTime = System.currentTimeMillis();
         this.progress = 0;
-        this.status = "pending";
+        this.status = DownloadStateMachine.Status.PENDING.name();
     }
 
     @NonNull
@@ -159,7 +160,7 @@ public class Download {
     }
 
     public String getStatus() {
-        return status == null ? "pending" : status;
+        return status == null ? DownloadStateMachine.Status.PENDING.name() : status;
     }
 
     public void setStatus(String status) {
@@ -338,7 +339,7 @@ public class Download {
                         d.setId("file_" + file.getAbsolutePath());
                         d.setVodName(vodName);
                         d.setProgress(100);
-                        d.setStatus("completed");
+                        d.setStatus(DownloadStateMachine.Status.COMPLETED.name());
                         d.setSpeed(0);
                         d.setFilePath(file.getAbsolutePath());
                         d.setCreateTime(file.lastModified());
@@ -357,7 +358,7 @@ public class Download {
                     break;
                 }
             }
-            if (!exists && !"completed".equals(db.getStatus())) {
+            if (!exists && !DownloadStateMachine.Status.COMPLETED.name().equals(db.getStatus())) {
                 result.add(db);
             }
         }

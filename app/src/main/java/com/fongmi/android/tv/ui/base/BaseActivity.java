@@ -16,6 +16,8 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -40,12 +42,17 @@ import java.io.File;
 
 public abstract class BaseActivity extends AppCompatActivity {
 
+    protected ActivityResultLauncher<Intent> pickLauncher;
+
     protected abstract ViewBinding getBinding();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         setNightMode();
         super.onCreate(savedInstanceState);
+        pickLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) onPickFile(result.getData().getData());
+        });
         if (transparent()) setTransparent(this);
         setContentView(getBinding().getRoot());
         EventBus.getDefault().register(this);
@@ -63,6 +70,14 @@ public abstract class BaseActivity extends AppCompatActivity {
 
     protected Activity getActivity() {
         return this;
+    }
+
+    /** 子类覆写以接收文件选择结果（原 REQUEST_PICK_FILE 行为）。默认空实现。 */
+    protected void onPickFile(Uri uri) {
+    }
+
+    public ActivityResultLauncher<Intent> getPickLauncher() {
+        return pickLauncher;
     }
 
     protected boolean transparent() {
@@ -202,31 +217,6 @@ public abstract class BaseActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT < 33) return;
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return;
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // 权限已授予
-            } else {
-                // 用户拒绝了权限，检查是否永久拒绝
-                if (Build.VERSION.SDK_INT >= 33 && !ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.POST_NOTIFICATIONS)) {
-                    // 永久拒绝，引导用户去设置
-                    new androidx.appcompat.app.AlertDialog.Builder(this)
-                            .setTitle("需要通知权限")
-                            .setMessage("应用需要通知权限来显示下载完成等通知，请在设置中开启通知权限")
-                            .setNegativeButton("取消", null)
-                            .setPositiveButton("去设置", (dialog, which) -> {
-                                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                                intent.setData(Uri.parse("package:" + getPackageName()));
-                                startActivity(intent);
-                            })
-                            .show();
-                }
-            }
-        }
     }
 
     @Override

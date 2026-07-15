@@ -117,6 +117,14 @@ public class PlayerSetting {
         Prefers.put("prefer_aac", preferAAC);
     }
 
+    public static boolean isAutoRotate() {
+        return Prefers.getBoolean("auto_rotate", false);
+    }
+
+    public static void putAutoRotate(boolean autoRotate) {
+        Prefers.put("auto_rotate", autoRotate);
+    }
+
     public static boolean isDanmakuLoad() {
         return Prefers.getBoolean("danmaku_load");
     }

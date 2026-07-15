@@ -34,7 +34,7 @@ object ThreadPools {
             Math.max(8, CPU_CORES * 4),
             60L, TimeUnit.SECONDS,
             LinkedBlockingQueue(QUEUE_CAPACITY),
-            ThreadPoolExecutor.CallerRunsPolicy()
+            ThreadPoolExecutor.AbortPolicy()
         )
         IO.allowCoreThreadTimeOut(true)
 
@@ -43,7 +43,7 @@ object ThreadPools {
             Math.max(2, CPU_CORES),
             60L, TimeUnit.SECONDS,
             LinkedBlockingQueue(QUEUE_CAPACITY),
-            ThreadPoolExecutor.CallerRunsPolicy()
+            ThreadPoolExecutor.AbortPolicy()
         )
         COMPUTE.allowCoreThreadTimeOut(true)
 
@@ -80,6 +80,44 @@ object ThreadPools {
         } catch (e: InterruptedException) {
             pool.shutdownNow()
             Thread.currentThread().interrupt()
+        }
+    }
+
+    /**
+     * 搜索控制器：管理并发搜索任务的生命周期
+     * 替代 PauseExecutor，支持取消前一个搜索、并发限制
+     */
+    class SearchController {
+
+        private var currentJob: java.util.concurrent.Future<*>? = null
+
+        fun start(parallelism: Int, tasks: List<Runnable>) {
+            cancel()
+            currentJob = io().submit {
+                val semaphore = java.util.concurrent.Semaphore(parallelism)
+                repeat(parallelism) { semaphore.release() }
+                val futures = tasks.map { task ->
+                    io().submit {
+                        semaphore.acquire()
+                        try {
+                            task.run()
+                        } finally {
+                            semaphore.release()
+                        }
+                    }
+                }
+                futures.forEach { it.get() }
+            }
+        }
+
+        fun cancel() {
+            currentJob?.cancel(true)
+            currentJob = null
+        }
+
+        companion object {
+            @JvmStatic
+            fun get() = SearchController()
         }
     }
 }

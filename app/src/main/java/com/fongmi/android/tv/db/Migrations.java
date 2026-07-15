@@ -42,6 +42,8 @@ public class Migrations {
     public static final Migration MIGRATION_34_35 = new Migration(34, 35) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // 先备份再删除，避免升级中途崩溃丢失 Live 数据（后续版本虽已移除该表，但保留备份表可在异常时恢复）
+            database.execSQL("CREATE TABLE IF NOT EXISTS Live_Bak AS SELECT * FROM Live");
             database.execSQL("DROP TABLE IF EXISTS Live");
         }
     };

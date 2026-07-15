@@ -21,9 +21,15 @@ import com.github.catvod.utils.Json;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import okhttp3.HttpUrl;
+import okhttp3.Response;
 
 public class VodConfig {
 
@@ -38,15 +44,24 @@ public class VodConfig {
     private String wall;
     private Site home;
     private volatile boolean isLoading = false; // 添加加载状态标记
+    // 加载代际序号：每次发起新加载自增，过期的旧加载回调据此丢弃，避免并发污染单例状态
+    private volatile long generation = 0;
+    // 单线程串行执行器：所有源加载排队执行，杜绝多线程并发读写单例集合
+    private final ExecutorService loadExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "VodConfig-Loader");
+        t.setDaemon(true);
+        return t;
+    });
 
     private VodConfig() {
         // 在构造函数中初始化列表，防止空指针异常
-        this.ads = new ArrayList<>();
-        this.doh = new ArrayList<>();
-        this.rules = new ArrayList<>();
-        this.sites = new ArrayList<>();
-        this.flags = new ArrayList<>();
-        this.parses = new ArrayList<>();
+        // 使用线程安全容器，配合单线程加载器实现双保险
+        this.ads = Collections.synchronizedList(new ArrayList<>());
+        this.doh = Collections.synchronizedList(new ArrayList<>());
+        this.rules = Collections.synchronizedList(new ArrayList<>());
+        this.sites = Collections.synchronizedList(new ArrayList<>());
+        this.flags = Collections.synchronizedList(new ArrayList<>());
+        this.parses = Collections.synchronizedList(new ArrayList<>());
     }
 
     private static class Loader {
@@ -86,30 +101,42 @@ public class VodConfig {
             }
             return;
         }
-        
-        // 添加加载状态检查，防止并发加载
+
         VodConfig instance = get();
+        // 本次加载的代际，之后回调时比对，过期的旧加载直接丢弃，避免污染新状态
+        // 代际自增必须在 synchronized 内，保证并发换源时每个请求拿到唯一且递增的代际
+        final long myGen;
         synchronized (instance) {
-            if (instance.isLoading) {
-                // 如果正在加载，取消之前的加载
-                try {
-                    OkHttp.cancel("vod");
-                } catch (Exception e) {
-                    Logger.e("VodConfig: Error cancelling previous load", e);
-                    Logger.e("Error", e);
+            myGen = ++instance.generation;
+            instance.isLoading = true;
+            // 取消之前仍在排队的同名请求，仅保留本次最新加载
+            try {
+                OkHttp.cancel("vod");
+            } catch (Exception e) {
+                Logger.e("VodConfig: Error cancelling previous load", e);
+                Logger.e("Error", e);
+            }
+            // 清除上次崩溃持久化标记：本次是正常换源，说明用户已重新操作，旧崩溃状态作废
+            try {
+                com.github.catvod.utils.Prefers.remove("crash");
+            } catch (Exception ignore) {
+            }
+        }
+
+        // 投入单线程串行执行器：即使频繁换源，也会排队依次执行，绝不会并发修改单例集合
+        instance.loadExecutor.execute(() -> {
+            if (myGen != instance.generation) return; // 已被更新的加载取代，丢弃本次结果
+            try {
+                instance.clear().config(config).load(callback, myGen);
+            } catch (Throwable e) {
+                instance.isLoading = false;
+                Logger.e("VodConfig: Exception during load", e);
+                Logger.e("Error", e);
+                if (myGen == instance.generation) {
+                    App.post(() -> callback.error("配置加载失败: " + e.getMessage()));
                 }
             }
-            instance.isLoading = true;
-        }
-        
-        try {
-            instance.clear().config(config).load(callback);
-        } catch (Exception e) {
-            instance.isLoading = false;
-            Logger.e("VodConfig: Exception during load", e);
-            Logger.e("Error", e);
-            App.post(() -> callback.error("配置加载失败: " + e.getMessage()));
-        }
+        });
     }
 
     public VodConfig init() {
@@ -145,65 +172,157 @@ public class VodConfig {
         return this;
     }
 
-    public void load(Callback callback) {
-        App.execute(() -> loadConfig(callback));
+    public void load(Callback callback, long gen) {
+        // 通过单线程串行执行器派发，保证所有加载（含 depot 递归）严格排队，绝不并发
+        loadExecutor.execute(() -> loadConfig(callback, gen));
     }
 
-    private void loadConfig(Callback callback) {
+    /**
+     * 启动时的同步式加载入口：沿用当前代际（不新开一代），由 init() 链式调用。
+     * 代际从 0 开始，启动加载属于"第 0 代"，后续用户换源通过 load(Config,Callback) 自增代际取代它。
+     */
+    public void load(Callback callback) {
+        loadExecutor.execute(() -> loadConfig(callback, generation));
+    }
+
+    private void loadConfig(Callback callback, long gen) {
+        // 代际过期（期间用户又换了源）则整体放弃，避免回调污染最新状态
+        if (gen != generation) return;
         try {
             OkHttp.cancel("vod");
-            checkJson(Json.parse(Decoder.getJson(UrlUtil.convert(config.getUrl()), "vod")).getAsJsonObject(), callback);
+            // 异步获取 JSON：避免在单线程 executor 中同步阻塞网络请求
+            // 使用 OkHttp.enqueue + 回调再 post 回 loadExecutor 继续处理，不阻塞换源队列
+            String finalUrl = UrlUtil.convert(config.getUrl());
+            OkHttp.newCall(finalUrl, "vod").enqueue(new okhttp3.Callback() {
+                @Override
+                public void onFailure(okhttp3.Call call, IOException e) {
+                    if (gen != generation) return;
+                    loadExecutor.execute(() -> {
+                        if (gen != generation) return;
+                        if (TextUtils.isEmpty(config.getUrl())) {
+                            isLoading = false;
+                            App.post(() -> callback.error(""));
+                        } else {
+                            loadCache(callback, e, gen);
+                        }
+                        Logger.e("Error", e);
+                    });
+                }
+
+                @Override
+                public void onResponse(okhttp3.Call call, okhttp3.Response res) throws IOException {
+                    if (gen != generation) return;
+                    try {
+                        HttpUrl httpUrl = res.request().url();
+                        int size = HttpUrl.parse(finalUrl).querySize();
+                        String effectiveUrl = httpUrl.querySize() == size ? httpUrl.toString() : finalUrl;
+                        String raw = res.body() != null ? res.body().string() : "";
+                        res.close();
+                        if (gen != generation) return;
+                        loadExecutor.execute(() -> {
+                            if (gen != generation) return;
+                            try {
+                                // 预校验：先拿原始文本，非 JSON 对象（如 HTML/纯文本）直接走失败，
+                                // 避免 Json.parse(...).getAsJsonObject() 抛 IllegalStateException 导致进程崩溃
+                                if (!Json.isObj(raw)) {
+                                    Logger.e("VodConfig: response is not a JSON object, url=" + effectiveUrl);
+                                    onLoadFailed(callback, "接口返回内容不是有效的配置（可能不是影视源或已失效）", null, gen);
+                                    return;
+                                }
+                                checkJson(Json.parse(raw).getAsJsonObject(), callback, gen);
+                            } catch (Throwable e) {
+                                if (gen != generation) return;
+                                if (TextUtils.isEmpty(config.getUrl())) {
+                                    isLoading = false;
+                                    App.post(() -> callback.error(""));
+                                } else {
+                                    loadCache(callback, e, gen);
+                                }
+                                Logger.e("Error", e);
+                            }
+                        });
+                    } catch (Throwable e) {
+                        if (gen != generation) return;
+                        loadExecutor.execute(() -> {
+                            if (gen != generation) return;
+                            if (TextUtils.isEmpty(config.getUrl())) {
+                                isLoading = false;
+                                App.post(() -> callback.error(""));
+                            } else {
+                                loadCache(callback, e, gen);
+                            }
+                            Logger.e("Error", e);
+                        });
+                    }
+                }
+            });
         } catch (Throwable e) {
+            if (gen != generation) return;
             if (TextUtils.isEmpty(config.getUrl())) {
                 isLoading = false;
                 App.post(() -> callback.error(""));
             } else {
-                loadCache(callback, e);
+                loadCache(callback, e, gen);
             }
             Logger.e("Error", e);
         }
     }
 
-    private void loadCache(Callback callback, Throwable e) {
-        if (!TextUtils.isEmpty(config.getJson())) {
-            checkJson(Json.parse(config.getJson()).getAsJsonObject(), callback);
+    // 加载失败统一兜底：仅提示，绝不写坏数据进数据库，绝不退出应用
+    private void onLoadFailed(Callback callback, String msg, Throwable e, long gen) {
+        if (gen != generation) return; // 已被更新的加载取代，放弃本次结果
+        isLoading = false;
+        // 不把坏数据写入 config.json，避免下次启动读到坏数据陷入崩溃死循环
+        App.post(() -> callback.error(TextUtils.isEmpty(msg) ? "配置加载失败" : msg));
+    }
+
+    private void loadCache(Callback callback, Throwable e, long gen) {
+        if (gen != generation) return;
+        if (!TextUtils.isEmpty(config.getJson()) && Json.isObj(config.getJson())) {
+            checkJson(Json.parse(config.getJson()).getAsJsonObject(), callback, gen);
         } else {
             isLoading = false;
             App.post(() -> callback.error(Notify.getError(R.string.error_config_get, e)));
         }
     }
 
-    private void checkJson(JsonObject object, Callback callback) {
+    private void checkJson(JsonObject object, Callback callback, long gen) {
+        if (gen != generation) return;
         if (object.has("msg")) {
             App.post(() -> callback.error(object.get("msg").getAsString()));
         } else if (object.has("urls")) {
-            parseDepot(object, callback);
+            parseDepot(object, callback, gen);
         } else {
-            parseConfig(object, callback);
+            parseConfig(object, callback, gen);
         }
     }
 
-    private void parseDepot(JsonObject object, Callback callback) {
+    private void parseDepot(JsonObject object, Callback callback, long gen) {
+        if (gen != generation) return;
         List<Depot> items = Depot.arrayFrom(object.getAsJsonArray("urls").toString());
         List<Config> configs = new ArrayList<>();
         for (Depot item : items) configs.add(Config.find(item, 0));
         Config.delete(config.getUrl());
         config = configs.get(0);
-        loadConfig(callback);
+        // 递归加载：仍走单线程串行执行器，保持严格串行，并继续传递代际
+        loadExecutor.execute(() -> loadConfig(callback, gen));
     }
 
-    private void parseConfig(JsonObject object, Callback callback) {
+    private void parseConfig(JsonObject object, Callback callback, long gen) {
+        if (gen != generation) return; // 代际过期，放弃
         try {
             initSite(object);
             initParse(object);
             initOther(object);
             String notice = Json.safeString(object, "notice");
             config.logo(Json.safeString(object, "logo"));
+            // 写库前再次校验代际：若期间用户又换了源，绝不把旧源数据持久化
+            if (gen != generation) return;
             config.json(object.toString()).update();
-            
+
             // 重置加载状态
             isLoading = false;
-            
+
             // 只调用一次success回调，优先显示通知消息
             if (!TextUtils.isEmpty(notice)) {
                 App.post(() -> callback.success(notice));

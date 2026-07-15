@@ -29,7 +29,9 @@ public abstract class FragmentStateManager {
         if (current != null) ft.hide(current);
         ft.setPrimaryNavigationFragment(fragment);
         ft.setReorderingAllowed(true);
-        ft.commitNowAllowingStateLoss();
+        // 用 commit() 异步安全提交，避免 commitNowAllowingStateLoss 在 onResume/配置变更后
+        // 触发 IllegalStateException 或状态丢失导致 HomeActivity 切 tab 白屏
+        ft.commit();
         return true;
     }
 

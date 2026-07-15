@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
 import android.text.Spannable;
@@ -21,6 +22,8 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.ContextCompat;
 import androidx.viewbinding.ViewBinding;
 
@@ -28,7 +31,6 @@ import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.BuildConfig;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.Setting;
-import com.fongmi.android.tv.Updater;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
 import com.fongmi.android.tv.bean.Config;
@@ -79,9 +81,27 @@ public class SettingFragment extends BaseFragment implements ConfigCallback, Sit
     private FragmentSettingBinding mBinding;
     private String[] size;
     private int type;
+    private ActivityResultLauncher<Intent> downloadLauncher;
+    private ActivityResultLauncher<Intent> wallLauncher;
 
     public static SettingFragment newInstance() {
         return new SettingFragment();
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        downloadLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) return;
+            Uri treeUri = result.getData().getData();
+            getActivity().getContentResolver().takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            Setting.putDownloadPath(treeUri.toString());
+            if (mBinding.downloadPathText != null) mBinding.downloadPathText.setText(treeUri.getPath());
+            com.fongmi.android.tv.utils.Notify.show("下载路径已设置");
+        });
+        wallLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+            if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) onPickWallpaper(result.getData().getData());
+        });
     }
 
     private String getSwitch(boolean value) {
@@ -118,9 +138,6 @@ public class SettingFragment extends BaseFragment implements ConfigCallback, Sit
 
         // 延迟初始化缓存大小显示，非首屏必需
         mBinding.getRoot().postDelayed(this::setCacheText, 500);
-        String[] quotes = getResources().getStringArray(R.array.motivational_quotes);
-        int randomIndex = new java.util.Random().nextInt(quotes.length);
-        mBinding.marquee.setText(quotes[randomIndex]);
         setOtherText();
     }
 
@@ -159,12 +176,10 @@ public class SettingFragment extends BaseFragment implements ConfigCallback, Sit
         mBinding.backup.setOnClickListener(this::onBackup);
         mBinding.player.setOnClickListener(this::onPlayer);
         mBinding.restore.setOnClickListener(this::onRestore);
-        mBinding.version.setOnClickListener(this::onVersion);
         mBinding.about.setOnClickListener(this::onAbout);
         mBinding.vod.setOnLongClickListener(this::onVodEdit);
         mBinding.vodHome.setOnClickListener(this::onVodHome);
         mBinding.vodHistory.setOnClickListener(this::onVodHistory);
-        mBinding.version.setOnLongClickListener(this::onVersionDev);
         mBinding.incognitoSwitch.setOnClickListener(this::setIncognito);
         mBinding.size.setOnClickListener(this::setSize);
         mBinding.wall.setOnClickListener(this::onWall);
@@ -328,17 +343,8 @@ public class SettingFragment extends BaseFragment implements ConfigCallback, Sit
         SettingPlayerActivity.start(requireActivity());
     }
 
-    private void onVersion(View view) {
-        Updater.create().force().release().start(getActivity());
-    }
-
     private void onAbout(View view) {
         AboutDialog.show(this);
-    }
-
-    private boolean onVersionDev(View view) {
-        Updater.create().force().dev().start(getActivity());
-        return true;
     }
 
     private void setWallDefault(View view) {
@@ -497,7 +503,7 @@ public class SettingFragment extends BaseFragment implements ConfigCallback, Sit
         }
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-        startActivityForResult(intent, REQUEST_DOWNLOAD_PATH);
+        downloadLauncher.launch(intent);
     }
 
     private void onDownloadConcurrent(View view) {
@@ -557,28 +563,23 @@ public class SettingFragment extends BaseFragment implements ConfigCallback, Sit
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == WallDialog.REQUEST_PICK_WALLPAPER) {
-            WallDialog.handleActivityResult(requestCode, resultCode, data, getActivity());
-            mBinding.getRoot().postDelayed(() -> mBinding.wallText.setText(getWallText()), 1500);
-            return;
-        }
-        if (resultCode != Activity.RESULT_OK || requestCode != FileChooser.REQUEST_PICK_FILE) {
-            if (requestCode == REQUEST_DOWNLOAD_PATH && resultCode == Activity.RESULT_OK && data != null) {
-                Uri treeUri = data.getData();
-                getActivity().getContentResolver().takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                Setting.putDownloadPath(treeUri.toString());
-                if (mBinding.downloadPathText != null) {
-                    mBinding.downloadPathText.setText(treeUri.getPath());
-                }
-                com.fongmi.android.tv.utils.Notify.show("下载路径已设置");
-            }
-            return;
-        }
+    protected void onPickFile(@Nullable Uri uri) {
+        if (uri == null) return;
         App.execute(() -> {
-            Config config = Config.find("file:/" + FileChooser.getPathFromUri(getContext(), data.getData()).replace(Path.rootPath(), ""), type);
+            Config config = Config.find("file:/" + FileChooser.getPathFromUri(getContext(), uri).replace(Path.rootPath(), ""), type);
             App.post(() -> setConfig(config));
         });
+    }
+
+    private void onPickWallpaper(@Nullable Uri uri) {
+        if (uri == null) return;
+        WallDialog.handleResult(uri, getActivity());
+        mBinding.getRoot().postDelayed(() -> mBinding.wallText.setText(getWallText()), 1500);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        mBinding = null;
     }
 }
